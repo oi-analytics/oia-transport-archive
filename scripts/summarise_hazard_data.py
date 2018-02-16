@@ -30,10 +30,13 @@ ESRI Shapefiles
 
 """
 import configparser
+import csv
 import glob
 import os
 
 import fiona
+import fiona.crs
+import rasterio
 
 
 def main():
@@ -49,15 +52,77 @@ def main():
     incoming_data_path = config['paths']['incoming_data']
 
     hazard_path = os.path.join(incoming_data_path, 'Natural_Hazard_Maps', 'Maps')
-    exts = ['shp', 'TAB', 'adf']
-    for file_path in glob.glob(str(hazard_path + '**/*.{shp,adf,TAB,tif}')):
-        get_info(file_path)
+    vector_exts = ['.shp', '.TAB']
+    raster_exts = ['.tif', '.txt']
+    pattern = os.path.join(hazard_path, '**', '*.*')
 
-def get_info(file_path):
-    print(file_path)
-    with fiona.open(file_path, 'r') as source:
-        print(source.schema)
+    report_path = os.path.join(hazard_path, 'report.csv')
 
+    with open(report_path, 'w', newline='') as output_fh:
+        writer = csv.writer(output_fh)
+        writer.writerow(('filename', 'path', 'format', 'type', 'crs', 'bounds', 'number_of_features', 'fields'))
+
+        for file_path in glob.glob(pattern, recursive=True):
+            ext = os.path.splitext(file_path)[1]
+            filename = os.path.split(file_path)[1]
+            file_path_detail = str(file_path).replace(
+                str(incoming_data_path),
+                ''
+            )
+            if ext in vector_exts:
+                details = vector_details(file_path)
+                if details:
+                    fields, geometry_type, crs, bounds, number_of_features = details
+                    row = (
+                        filename,
+                        file_path_detail,
+                        ext,
+                        'vector:{}'.format(geometry_type),
+                        crs,
+                        bounds,
+                        number_of_features,
+                        fields
+                    )
+                    writer.writerow(row)
+
+            if ext in raster_exts or filename == 'hdr.adf':
+                bands, crs, bounds, number_of_cells = raster_details(file_path)
+                row = (
+                    filename,
+                    file_path_detail,
+                    ext,
+                    'raster',
+                    crs,
+                    bounds,
+                    number_of_cells,
+                    bands
+                )
+                writer.writerow(row)
+
+def vector_details(file_path):
+    try:
+        with fiona.open(file_path, 'r') as source:
+            fields = [(k,v) for k, v in source.schema['properties'].items()]
+            geometry_type = source.schema['geometry']
+            crs = fiona.crs.to_string(source.crs)
+            bounds = source.bounds
+            number_of_features = len(source)
+        return fields, geometry_type, crs, bounds,number_of_features
+    except Exception as ex:
+        print("INFO: fiona read failure (likely not a vector file):", ex)
+        return None
+
+def raster_details(file_path):
+    with rasterio.open(file_path) as dataset:
+        bbox = dataset.bounds
+        bounds = (bbox.left, bbox.bottom, bbox.right, bbox.top)
+        number_of_cells = dataset.width * dataset.height
+        if dataset.crs.is_valid:
+            crs = dataset.crs.to_string()
+        else:
+            crs = 'invalid/unknown'
+        bands = [(i, dtype) for i, dtype in zip(dataset.indexes, dataset.dtypes)]
+    return bands, crs, bounds, number_of_cells
 
 if __name__ == '__main__':
     main()
