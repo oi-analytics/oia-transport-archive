@@ -29,7 +29,7 @@ ESRI Shapefiles
  - .shp is main file
 
 """
-import configparser
+import json
 import csv
 import glob
 import os
@@ -41,14 +41,10 @@ import rasterio
 
 def main():
     config_path = os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),
-            '..',
-            'config.ini'
-        )
+        os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
     )
-    config = configparser.ConfigParser()
-    config.read(config_path)
+    with open(config_path, 'r') as config_fh:
+        config = json.load(config_fh)
     incoming_data_path = config['paths']['incoming_data']
 
     hazard_path = os.path.join(incoming_data_path, 'Natural_Hazard_Maps', 'Maps')
