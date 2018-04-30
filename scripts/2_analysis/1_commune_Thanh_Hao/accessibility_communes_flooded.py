@@ -16,32 +16,11 @@ from geopy.distance import vincenty
 from boltons.iterutils import pairwise
 
 
-def line_length(line, ellipsoid='WGS-84'):
-    """Length of a line in meters, given in geographic coordinates.
-
-    Adapted from https://gis.stackexchange.com/questions/4022/looking-for-a-pythonic-way-to-calculate-the-length-of-a-wkt-linestring#answer-115285
-
-    Args:
-        line: a shapely LineString object with WGS-84 coordinates.
-        
-        ellipsoid: string name of an ellipsoid that `geopy` understands (see http://geopy.readthedocs.io/en/latest/#module-geopy.distance).
-
-    Returns:
-        Length of line in meters.
-    """
-    if line.geometryType() == 'MultiLineString':
-        return sum(line_length(segment) for segment in line)
-
-    return sum(
-        vincenty(a, b, ellipsoid=ellipsoid).kilometers
-        for a, b in pairwise(line.coords)
-    )
-    
 def main():
 
     # Define current directory and data directory
     config_path = os.path.realpath(
-        os.path.join(os.path.dirname(__file__), '..', '..', 'config.json')
+        os.path.join(os.path.dirname(__file__), '..', '..','..', 'config.json')
     )
     with open(config_path, 'r') as config_fh:
         config = json.load(config_fh)
@@ -122,7 +101,7 @@ def main():
     for rp in rps:
         distance_per_rp[rp] = shortest_distance(rp,calc_path,road_path,communes_TH,places_TH,spatial_places)
         
-    #     # merge with initial commune dataset
+    # merge with initial commune dataset
     new_distances = pd.concat(distance_per_rp,axis=1)
     new_distances.columns = [x[0] for x in list(new_distances.columns)]
     communes_affected = communes_TH.merge(new_distances, left_on='commune_id',right_index=True)    
@@ -135,6 +114,7 @@ def main():
 def find_node(x,nodes):
     centroidal = list(x.centroid.coords)[:1][0]
     return nodes[np.argmin(np.sum((nodes - centroidal)**2, axis=1))]   
+
 
 def save_flooded_networks(rps,roads_TH,calc_path,output_path):
 
@@ -154,6 +134,28 @@ def save_flooded_networks(rps,roads_TH,calc_path,output_path):
                 
                 # save road network without flooded roads
                 roads_TH.loc[~roads_TH['edge_id'].isin(list(rp_subset['edge_id']))].to_file(flooded_road_path)
+
+def line_length(line, ellipsoid='WGS-84'):
+    """Length of a line in meters, given in geographic coordinates.
+
+    Adapted from https://gis.stackexchange.com/questions/4022/looking-for-a-pythonic-way-to-calculate-the-length-of-a-wkt-linestring#answer-115285
+
+    Args:
+        line: a shapely LineString object with WGS-84 coordinates.
+        
+        ellipsoid: string name of an ellipsoid that `geopy` understands (see http://geopy.readthedocs.io/en/latest/#module-geopy.distance).
+
+    Returns:
+        Length of line in meters.
+    """
+    if line.geometryType() == 'MultiLineString':
+        return sum(line_length(segment) for segment in line)
+
+    return sum(
+        vincenty(a, b, ellipsoid=ellipsoid).kilometers
+        for a, b in pairwise(line.coords)
+    )
+    
  
 def shortest_distance(rp,calc_path,road_path,communes_TH,places_TH,spatial_places):
 
@@ -170,7 +172,7 @@ def shortest_distance(rp,calc_path,road_path,communes_TH,places_TH,spatial_place
     commune_dist = {}
     for id_,commune in communes_TH.iterrows():
         
-         # find nearest points of interest (places in this case)
+        # find nearest points of interest (places in this case)
         nearest_places = places_TH.iloc[list(spatial_places.nearest(commune.geometry.bounds,3))]
         
         k = 0
@@ -204,11 +206,9 @@ def shortest_distance(rp,calc_path,road_path,communes_TH,places_TH,spatial_place
         
         commune_dist[commune['commune_id']] = shortest_distance
 
-    # =============================================================================
-    #     # create dataframe of distances       
-    # =============================================================================
-        commune_dist = pd.DataFrame.from_dict(commune_dist,orient='index')
-        commune_dist.columns = [rp]
+    # create dataframe of distances       
+    commune_dist = pd.DataFrame.from_dict(commune_dist,orient='index')
+    commune_dist.columns = [rp]
     
     return commune_dist
 
