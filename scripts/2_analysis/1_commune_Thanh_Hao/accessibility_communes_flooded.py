@@ -108,7 +108,7 @@ def main():
     communes_affected = communes_affected.drop('nearest_node',axis=1)
 
     # # save output 
-    communes_affected.to_file(output_path,'Thanh_Hoa_affected_communes_flood.shp')
+    communes_affected.to_file(os.path.join(output_path,'Thanh_Hoa_affected_communes_flood.shp'))
 
 
 def find_node(x,nodes):
@@ -134,6 +134,7 @@ def save_flooded_networks(rps,roads_TH,calc_path,output_path):
                 
                 # save road network without flooded roads
                 roads_TH.loc[~roads_TH['edge_id'].isin(list(rp_subset['edge_id']))].to_file(flooded_road_path)
+
 
 def line_length(line, ellipsoid='WGS-84'):
     """Length of a line in meters, given in geographic coordinates.
