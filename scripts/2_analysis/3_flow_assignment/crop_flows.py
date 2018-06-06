@@ -22,8 +22,6 @@ import osgeo.ogr as ogr
 import pandas as pd
 import copy
 
-import transport_network_creation as tnc
-
 import ast
 from osgeo import gdal
 import geopandas as gpd
@@ -35,6 +33,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from scripts.utils import load_config
 from scripts.dbutils import *
+import scripts.transport_network_creation as tnc
 
 
 '''
