@@ -111,11 +111,6 @@ def nodes_voronoi_polygons_aggregations(intersection_table,node_table,polygon_ta
 
 def nodes_polygons_aggregations(intersection_table,node_table,polygon_table,node_id_attr,polygon_id_attr,node_polygon_attr,polygon_node_attr,polygon_attr,node_geom,polygon_geom,connection):
 	drop_postgres_table_psycopg2('intermediate_table',connection)
-	# sql_query = '''create table intermediate_table as select A.{0}, 
-	# 		(select B.{1} from {2} as B where A.{3}  = B.{4} 
-	# 		order by st_distance(A.{5},B.{6}) asc limit 1) as {7} 
-	# 		from {8} as A
-	# 		'''.format(polygon_attr,node_id_attr,node_table,polygon_node_attr,node_polygon_attr,polygon_geom,node_geom,node_id_attr,polygon_table)
 	with connection.cursor() as cursor:
 		sql_query = '''CREATE TABLE intermediate_table AS SELECT DISTINCT ON (A.{0}) A.{1}, A.{2}, B.{3}
 					FROM {4} As A, {5} As B  
@@ -164,23 +159,10 @@ def add_columns_to_table_psycopg2(table_name, table_match, col_name_list,col_typ
 			cursor.execute(sql_query)
 			connection.commit()
 
-			sql_query = "update %s set %s = 0"%(table_name,col_name_list[c])
-			cursor.execute(sql_query)
-			connection.commit()
-
-			# sql_query = '''
-			# 			update {0} set {1} = (select {2} from {3} as A where {4}.{5} = A.{6}) 
-			# 			'''.format(table_name,col_name_list[c],col_name_list[c],table_match,table_name,col_id,col_id)
-
 			sql_query = '''
 						UPDATE {0} t2 SET {1} = t1.{2} 
 						FROM   {3} t1 WHERE  t2.{4} = t1.{5}
 						'''.format(table_name,col_name_list[c],col_name_list[c],table_match,col_id,col_id)
-			# print (sql_query)
-			cursor.execute(sql_query)
-			connection.commit()
-
-			sql_query = "update %s set %s = 0 where %s is Null"%(table_name,col_name_list[c],col_name_list[c])
 			cursor.execute(sql_query)
 			connection.commit()
 
