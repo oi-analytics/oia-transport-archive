@@ -16,6 +16,27 @@ from scripts.utils import load_config
 import fiona
 import fiona.crs
 import rasterio
+import numpy as np
+import pandas as pd
+
+def raster_rewrite(in_raster,out_raster,nodata):
+	with rasterio.open(in_raster) as dataset:
+		data_array = dataset.read()
+		data_array[np.where(np.isnan(data_array))] = nodata
+	
+		with rasterio.open(out_raster, 'w', driver='GTIff',
+					height=data_array.shape[1],    # numpy of rows
+					width=data_array.shape[2],     # number of columns
+					count=dataset.count,                        # number of bands
+					dtype=data_array.dtype,  # this must match the dtype of our array
+					crs=dataset.crs,
+					transform=dataset.transform) as out_data:
+			out_data.write(data_array)  # optional second parameter is the band number to write to
+			out_data.nodata = -1  # set the raster's nodata value
+
+
+	os.remove(in_raster)
+	os.rename(out_raster,in_raster)
 
 
 def raster_projections_and_databands(file_path):
@@ -43,12 +64,6 @@ def raster_projections_and_databands(file_path):
 def convert_geotiff_to_vector_with_threshold(from_threshold,to_threshold, infile, infile_epsg,tmpfile_1, tmpfile_2, outfile):
 	"""Threshold raster, convert to polygons, assign crs
 	"""
-	subprocess.run([
-		"gdal_edit.py",
-		'-a_srs', 'EPSG:{}'.format(infile_epsg),
-		infile
-	])
-
 	args = [
 		"gdal_calc.py",
 		'-A', infile,
@@ -61,6 +76,12 @@ def convert_geotiff_to_vector_with_threshold(from_threshold,to_threshold, infile
 		'--co=COMPRESS=LZW'
 	]
 	subprocess.run(args)
+
+	subprocess.run([
+		"gdal_edit.py",
+		'-a_srs', 'EPSG:{}'.format(infile_epsg),
+		tmpfile_1
+	])
 
 	subprocess.run([
 		"gdal_polygonize.py",
@@ -87,12 +108,6 @@ def convert_geotiff_to_vector_with_threshold(from_threshold,to_threshold, infile
 def convert_geotiff_to_vector_with_multibands(band_colors, infile, infile_epsg,tmpfile_1, tmpfile_2, outfile):
 	"""Threshold raster, convert to polygons, assign crs
 	"""
-	# subprocess.run([
-	# 	"gdal_edit.py",
-	# 	'-a_srs', 'EPSG:{}'.format(infile_epsg),
-	# 	infile
-	# ])
-
 	args = [
 		"gdal_calc.py",
 		'-A', infile,
@@ -102,14 +117,21 @@ def convert_geotiff_to_vector_with_multibands(band_colors, infile, infile_epsg,t
 		'-C', infile,
 		'--C_band=3',
 		'--outfile={}'.format(tmpfile_1),
-		'--calc=logical_and(A=={0}, B=={1},C=={2})'.format(band_colors[0],band_colors[1],band_colors[2]),
 		'--type=Byte', '--NoDataValue=0',
+		'--calc=logical_and(A=={0}, B=={1},C=={2})'.format(band_colors[0],band_colors[1],band_colors[2]),
 		'--co=SPARSE_OK=YES',
 		'--co=NBITS=1',
 		'--quiet',
 		'--co=COMPRESS=LZW'
 	]
 	subprocess.run(args)
+
+	subprocess.run([
+		"gdal_edit.py",
+		'-a_srs', 'EPSG:{}'.format(infile_epsg),
+		tmpfile_1
+	])
+
 
 	subprocess.run([
 		"gdal_polygonize.py",
@@ -162,16 +184,14 @@ def main():
 	for root, dirs, files in os.walk(root_dir):
 		for file in files:
 			if file.endswith(".tif") or file.endswith(".tiff"):
-				# fpath = os.path.join(root, fname)
 				band_nums, crs, unique_data_values = raster_projections_and_databands(os.path.join(root, file))
 				print (file,crs, unique_data_values)
-				if 'WGS84' in crs:
-					s_crs = 4326
-				elif crs != 'invalid/unknown':
+				if 'epsg' in crs:
 					crs_split = crs.split(':')
 					s_crs = [int(c) for c in crs_split if c.isdigit() is True][0]
 				else:
 					s_crs = 32648
+
 
 				if not unique_data_values:
 					# threshold based datasets
@@ -186,15 +206,21 @@ def main():
 						convert_geotiff_to_vector_with_threshold(thr_1,thr_2,in_file,s_crs,tmp_1, tmp_2, out_file)
 				elif band_nums == 1:
 					# code value based dataset
-					code_vals = [4,5]
+					if file == 'LSZ_NgheAn_to_PhuYen.tif':
+						code_vals = [3,4]
+					else:
+						code_vals = [4,5]
 					for c in code_vals:
 						in_file = os.path.join(root,file)
 						tmp_1 = os.path.join(root,file.split(".tif")[0] + '_mask.tiff')
 						tmp_2 = os.path.join(root,file.split(".tif")[0] + '_mask.shp')
 						out_file = os.path.join(root,file.split(".tif")[0] + '_{}_band.shp'.format(c))
 						convert_geotiff_to_vector_with_threshold(c,c+1,in_file,s_crs,tmp_1, tmp_2, out_file)
-				elif band_nums == 3:
+				if band_nums == 3:
 					# multi-band color datasets
+					# remove nodata values from the bands in the raster
+					raster_rewrite(os.path.join(root, file),os.path.join(root, 'test.tif'),0)
+
 					for dv in unique_data_values:
 						if dv in [(255,190,190),(245,0,0),(255,0,0)]:
 							thr = 5
