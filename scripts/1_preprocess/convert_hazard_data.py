@@ -19,6 +19,32 @@ import rasterio
 import numpy as np
 import pandas as pd
 
+def glofris_data_details(file_name,root_dir):
+	for root, dirs, files in os.walk(root_dir):
+		for file in files:
+			if file.endswith(".tif") or file.endswith(".tiff"):
+				fname = file.split('.tif')
+				fname = fname[0]
+				print (fname)
+				if '2030' in fname:
+					year = 2030
+				else:
+					year = 2016
+
+				if 'rcp4p5' in fname:
+					sc = 'rcp 4.5'
+				elif 'rcp8p5' in fname:
+					sc = 'rcp 8.5'
+				else:
+					sc = 'none'
+
+				f_all.append((fname,'flooding',year,sc,1.0/float(fname[-5:]),'FALSE','none'))
+
+	df = pd.DataFrame(f_all,columns = ['file_name',	'hazard_type',	'year',	'climate_scenario',	'probability','banded',	'bands'])
+	df.to_csv(os.path.join(root_dir,'glofris_files.csv'),index = False)
+
+
+
 def raster_rewrite(in_raster,out_raster,nodata):
 	with rasterio.open(in_raster) as dataset:
 		data_array = dataset.read()
@@ -180,10 +206,11 @@ def convert(threshold, infile, tmpfile_1, outfile):
 
 def main():
 	data_path = load_config()['paths']['data']
-	root_dir = os.path.join(data_path,'Hazard_data')
+	root_dir = os.path.join(data_path,'Hazard_data','Glofris')
+	f_all = []
 	for root, dirs, files in os.walk(root_dir):
 		for file in files:
-			if file.endswith(".tif") or file.endswith(".tiff"):
+			if file.endswith(".tif") or file.endswith(".tiff"):		
 				band_nums, crs, unique_data_values = raster_projections_and_databands(os.path.join(root, file))
 				print (file,crs, unique_data_values)
 				if 'epsg' in crs:
