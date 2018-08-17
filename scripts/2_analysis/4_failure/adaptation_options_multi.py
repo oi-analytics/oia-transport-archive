@@ -29,29 +29,23 @@ def net_present_value(adaptation_options_dataframe,strategy_parameter,parameter_
 	for param_val in parameter_value_list:
 		
 		st = adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'strategy'].values[0]
-		
 		st_min_benefit = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_benefit'].sum() + min_eal
 		st_max_benefit = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_benefit'].sum() + max_eal
 
-		st_min_cost = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_cost'].sum()
-		st_max_cost = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_cost'].sum()
-		
-		min_npv = st_min_benefit - st_max_cost 
-		max_npv = st_max_benefit - st_min_cost
+		min_npv = st_min_benefit - edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_cost'].sum() 
+		max_npv = st_max_benefit - edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_cost'].sum()
 
 		if adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_cost'].sum() > 0:
-			min_bc_ratio = 1.0*st_min_benefit/st_max_cost
+			min_bc_ratio = 1.0*st_min_benefit/(edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_cost'].sum())
 		else:
 			min_bc_ratio = 0
 
 		if adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_cost'].sum() > 0:
-			max_bc_ratio = 1.0*st_max_benefit/st_min_cost
+			max_bc_ratio = 1.0*st_max_benefit/(edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_cost'].sum())
 		else:
 			max_bc_ratio = 0
 
-		edge_options_dictionary.append({'strategy':st,'min_benefit_npv':st_min_benefit,'max_benefit_npv':st_max_benefit,
-								'min_cost_npv':st_min_cost, 'max_cost_npv':st_max_cost,
-								'min_adapt_npv':min_npv,'max_adapt_npv':max_npv,'min_bc_ratio':min_bc_ratio,'max_bc_ratio':max_bc_ratio})
+		edge_options_dictionary.append({'strategy':st,'min_npv':min_npv,'max_npv':max_npv,'min_bc_ratio':min_bc_ratio,'max_bc_ratio':max_bc_ratio})
 
 	return edge_options_dictionary
 
@@ -151,7 +145,9 @@ def main():
 			'edge_id','hazard_type','max_val','min_val','model','probability',
 			'year','exposure_length']
 
-	index_cols = ['edge_id','hazard_type','model','climate_scenario','year','road_cond','asset_type','width','road_length']
+	# index_cols = ['edge_id','hazard_type','model','climate_scenario','year','road_cond','asset_type','width','road_length']
+	selection_criteria = ['commune_id','hazard_type','model','climate_scenario','year']
+	filter_cols = ['edge_id','exposed_length'] + selection_criteria
 
 	# provinces to consider 
 	province_list = ['Lao Cai','Binh Dinh','Thanh Hoa']
@@ -198,16 +194,32 @@ def main():
 			all_edge_fail_scenarios.loc[all_edge_fail_scenarios['edge_id'] == e[0], 'width'] = e[3]
 			all_edge_fail_scenarios.loc[all_edge_fail_scenarios['edge_id'] == e[0], 'road_length'] = 1000.0*e[4]
 
-		all_edge_fail_scenarios['percent_exposure'] = 100.0*all_edge_fail_scenarios['exposure_length']/all_edge_fail_scenarios['road_length']
-		df_path = os.path.join(output_path,'hazard_scenarios','roads_hazard_intersections_{}.csv'.format(province_name))
-		all_edge_fail_scenarios.to_csv(df_path,index = False)
+		# all_edge_fail_scenarios['percent_exposure'] = 100.0*all_edge_fail_scenarios['exposure_length']/all_edge_fail_scenarios['road_length']
+		# df_path = os.path.join(output_path,'hazard_scenarios','roads_hazard_intersections_{}.csv'.format(province_name))
+		# all_edge_fail_scenarios.to_csv(df_path,index = False)
 		
-		all_edge_fail_scenarios = all_edge_fail_scenarios.set_index(index_cols)
-		scenarios = list(set(all_edge_fail_scenarios.index.values.tolist()))
+		# all_edge_fail_scenarios = all_edge_fail_scenarios.set_index(index_cols)
+		# scenarios = list(set(all_edge_fail_scenarios.index.values.tolist()))
+
+		all_edge_fail_scenarios = all_edge_fail_scenarios.set_index(selection_criteria)
+		criteria_set = list(set(all_edge_fail_scenarios.index.values.tolist()))
+		
+		multiple_ef_list = []
+		for criteria in criteria_set:
+			if len(all_edge_fail_scenarios.loc[criteria,'edge_id'].index) == 1:
+				efail = [all_edge_fail_scenarios.loc[criteria,'edge_id'].item()]
+			else:
+				efail = list(set(all_edge_fail_scenarios.loc[criteria,'edge_id'].values.tolist()))
+
+			flength = all_edge_fail_scenarios.loc[criteria,'length'].sum()
+			pflength = flength/all_edge_fail_scenarios.loc[criteria,'road_length'].sum()
+
+			criteria_dict = {**(dict(list(zip(selection_criteria,criteria)))),**{'exposed_length':flength}}
+			multiple_ef_list.append((efail,criteria_dict))
 
 		for tr_wt in truck_unit_wt: 
-			flow_output_excel = os.path.join(output_path,'failure_results','single_edge_failures_totals_{0}_{1}_tons_projections.xlsx'.format(province_name,int(tr_wt)))
-			adapt_output_excel = os.path.join(output_path,'failure_results','single_edge_failures_scenarios_{0}_{1}_tons_adapt_options.xlsx'.format(province_name,int(tr_wt)))
+			flow_output_excel = os.path.join(output_path,'failure_results','multiple_edge_failures_totals_{0}_{1}_tons_projections.xlsx'.format(province_name,int(tr_wt)))
+			adapt_output_excel = os.path.join(output_path,'failure_results','multiple_edge_failures_scenarios_{0}_{1}_tons_adapt_options.xlsx'.format(province_name,int(tr_wt)))
 			excl_wrtr = pd.ExcelWriter(adapt_output_excel)
 			for grth in growth_scenarios:
 				loss_time_series = pd.read_excel(flow_output_excel,sheet_name = grth[1])
@@ -316,17 +328,16 @@ def main():
 							max_daily_loss = 0
 							min_edge_ead = 0
 							max_edge_ead = 0
-							edge_options = [{'strategy':'none','min_benefit_npv':0,'max_benefit_npv':0,'min_cost_npv':0,'max_cost_npv':0,'min_adapt_npv':0,'max_adapt_npv':0,'min_bc_ratio':0,'max_bc_ratio':0}]
+							edge_options = [{'strategy':'none','min_npv':0,'max_npv':0,'min_bc_ratio':0,'max_bc_ratio':0}]
 
 						for options in edge_options:
-							scenarios_list.append(sc_list + [min_daily_loss,max_daily_loss,min_edge_ead,max_edge_ead,options['strategy'],options['min_benefit_npv'],options['max_benefit_npv'],options['min_cost_npv'],options['max_cost_npv'],options['min_adapt_npv'],options['max_adapt_npv'],options['min_bc_ratio'],options['max_bc_ratio']])
+							scenarios_list.append(sc_list + [min_daily_loss,max_daily_loss,min_edge_ead,max_edge_ead,options['strategy'],options['min_npv'],options['max_npv'],options['min_bc_ratio'],options['max_bc_ratio']])
 
 
 
 					new_cols = ['min_band','max_band','min_height','max_height','min_exposure_percent','max_exposure_percent',
 								'min_duration','max_duration','min_exposure_length','max_exposure_length','min_daily_loss','max_daily_loss',
-								'min_npv_nooption','max_npv_nooption','adapt_strategy','min_benefit_npv','max_benefit_npv','min_cost_npv',
-								'max_cost_npv','min_adapt_npv','max_adapt_npv','min_bc_ratio','max_bc_ratio']
+								'min_npv_nooption','max_npv_nooption','adapt_strategy','min_npv','max_npv','min_bc_ratio','max_bc_ratio']
 					scenarios_df = pd.DataFrame(scenarios_list,columns = index_cols + new_cols)
 					# df_path = os.path.join(output_path,'hazard_scenarios','roads_hazard_intersections_{}_risks.csv'.format(province_name))
 					# scenarios_df.to_csv(df_path,index = False)

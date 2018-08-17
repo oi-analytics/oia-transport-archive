@@ -70,13 +70,16 @@ def main():
 		# set all paths for all input files we are going to use
 		province_name = province.replace(' ','').lower()
 		for tr_wt in truck_unit_wt:
-			flow_output_excel = os.path.join(output_path,'failure_results','single_edge_failures_totals_{0}_{1}_tons_projections.xlsx'.format(province_name,int(tr_wt)))
+			flow_output_excel = os.path.join(output_path,'failure_results','multiple_edge_failures_totals_{0}_{1}_tons_projections.xlsx'.format(province_name,int(tr_wt)))
 			excl_wrtr_1 = pd.ExcelWriter(flow_output_excel)
 			for grth in growth_scenarios:
 				edge_fail_ranges = []
 				for t in range(len(types)):
-					df_path = os.path.join(output_path,'failure_results','single_edge_failures_all_path_impacts_{0}_{1}_{2}_tons.csv'.format(province_name,types[t],int(tr_wt)))
+					df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_all_path_impacts_{0}_{1}_{2}_tons.csv'.format(province_name,types[t],int(tr_wt)))
 					df = pd.read_csv(df_path).fillna(0)
+					df = df[['edge_id','econ_value','tons','old_cost','new_cost','no_access']]
+					df = df.drop_duplicates(['edge_id','econ_value','tons','old_cost','new_cost','no_access'])
+					# df = df.groupby(['edge_id', 'no_access'])['econ_value','tons','old_cost','new_cost'].
 					edge_impact = df[['edge_id']]
 					# print (edge_impact)
 					cols = []
