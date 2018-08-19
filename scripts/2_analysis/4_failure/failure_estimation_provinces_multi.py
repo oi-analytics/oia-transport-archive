@@ -256,7 +256,7 @@ def main():
 	cols = ['origin','destination','min_edge_path','max_edge_path','min_netrev','max_netrev','min_croptons','max_croptons',
 			'min_distance','max_distance','min_time','max_time','min_gcost','max_gcost']
 
-	selection_criteria = ['commune_id','hazard_type','model','climate_scenario','year']
+	selection_criteria = ['commune_id','hazard_type','model','climate_scenario','year','probability']
 	filter_cols = ['edge_id','exposed_length'] + selection_criteria
 	'''
 	Path OD flow disruptions
