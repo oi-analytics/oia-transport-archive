@@ -65,9 +65,6 @@ Create the database connection
 def main():
 	data_path,calc_path,output_path = load_config()['paths']['data'],load_config()['paths']['calc'],load_config()['paths']['output']
 
-	exchange_rate = 1.05*(1000000/21000)
-	vehicle_wt = 5.0
-
 	# population_points_in = os.path.join(data_path,'Points_of_interest','population_points.shp')
 	# commune_path = os.path.join(data_path,'Vietnam_boundaries','boundaries_stats','commune_level_stats.shp')
 
@@ -81,10 +78,11 @@ def main():
 	'''
 	# modes_file_paths = [('Roads','national_roads'),('Railways','national_rail'),('Airports','airnetwork'),('Waterways','waterways')]
 	# modes_file_paths = [('Roads','national_roads')]
-	modes_file_paths = [('Roads','national_roads'),('Railways','national_rail'),('Airports','airnetwork')]
-	modes = ['road','rail','air','water']
+	modes_file_paths = [('Roads','national_roads'),('Railways','national_rail'),('Airports','airnetwork'),('Waterways','waterways'),('Waterways','waterways')]
+	modes = ['road','rail','air','inland','coastal']
 	mode_cols = ['road','rail','air','inland','coastal']
-	new_mode_cols = ['o','d','road','rail','air','water']
+	new_mode_cols = ['o','d','road','rail','air','inland','coastal']
+	# new_mode_cols = ['o','d','road','rail','air','water']
 
 	# modes_file_paths = [('Railways','national_rail')]
 	# modes = ['rail','air','water']
@@ -101,7 +99,7 @@ def main():
 	for m in mode_cols:
 		od_data_modes[m] = od_data_modes[m]/od_data_modes['total'].replace(np.inf, 0)
 
-	od_data_modes['water'] = od_data_modes['inland'] + od_data_modes['coastal']		
+	# od_data_modes['water'] = od_data_modes['inland'] + od_data_modes['coastal']		
 	od_data_modes = od_data_modes.fillna(0)
 	# od_data_modes.to_csv('mode_frac.csv',index = False)
 
@@ -165,6 +163,7 @@ def main():
 
 	# print (communes)
 
+	modes_df = []
 	for m in range(len(modes_file_paths)):
 		mode_data_path = os.path.join(data_path,modes_file_paths[m][0],modes_file_paths[m][1])
 		for file in os.listdir(mode_data_path):
@@ -209,6 +208,12 @@ def main():
 
 			gdf_pops = pd.DataFrame(nd_veh_list,columns = ['node_id','population'])
 			del nd_veh_list
+			nodes = pd.merge(nodes,gdf_pops,how='left', on=['node_id']).fillna(0)
+			del gdf_pops
+
+		elif modes[m] in ('inland','coastal'):
+			nodes['population'] = nodes['tons']
+
 		else:
 			xy_list = []
 			for iter_,values in nodes.iterrows():
@@ -251,8 +256,8 @@ def main():
 			# print (gdf_pops)
 			del gdf_voronoi, poly_list, poly_df
 		
-		nodes = pd.merge(nodes,gdf_pops,how='left', on=['node_id']).fillna(0)
-		del gdf_pops
+			nodes = pd.merge(nodes,gdf_pops,how='left', on=['node_id']).fillna(0)
+			del gdf_pops
 
 		# nodes = nodes[['node_id','od_id','population']]
 		nodes_sums = nodes.groupby(['od_id','node_id']).agg({'population': 'sum'})
@@ -262,15 +267,22 @@ def main():
 
 		nodes = pd.merge(nodes,nodes_frac[['node_id','pop_frac']],how='left', on=['node_id']).fillna(0)
 
-		nodes.to_file(os.path.join(output_path,'networks_test','{}_nodes.shp'.format(modes[m])))
+		# nodes.to_file(os.path.join(output_path,'networks_test','{}_nodes.shp'.format(modes[m])))
 
 		# print (nodes)
 
-		del nodes_frac, nodes_sums
+		modes_df.append(nodes)
+
+		del nodes_frac, nodes_sums, nodes
+
+
 		
-		national_ods_df = []
-		od_nodes_regions = list(zip(nodes['node_id'].values.tolist(),nodes['province_name'].values.tolist(),nodes['od_id'].values.tolist(),nodes['pop_frac'].values.tolist()))
-		for ind in ind_cols:
+	national_ods_df = []
+	for ind in ind_cols:
+		national_ods_modes_df = []
+		for m in range(len(modes_file_paths)):
+			nodes = modes_df[m]
+			od_nodes_regions = list(zip(nodes['node_id'].values.tolist(),nodes['province_name'].values.tolist(),nodes['od_id'].values.tolist(),nodes['pop_frac'].values.tolist()))
 			ind_mode = modes[m]+ '_' + ind
 			od_fracs[ind_mode] = od_fracs[modes[m]]*od_fracs[ind]
 
@@ -303,54 +315,56 @@ def main():
 			
 					print (o,d,fval,modes[m],ind)
 
-			national_ods_df.append(pd.DataFrame(od_list,columns = ['origin','o_region','destination','d_region',ind]))
-			del od_list
+			national_ods_modes_df.append(pd.DataFrame(od_list,columns = ['origin','o_region','destination','d_region',ind]))
+			del od_list, nodes
+
+		national_ods_df.append(national_ods_modes_df)
 
 
-		# all the crop OD pairs
-		for file in os.listdir(crop_data_path):
-			if file.endswith(".tif") and ('spam_p' in file.lower().strip()):
-				fpath = os.path.join(crop_data_path, file)
-				crop_name = [cr for cr in crop_names if cr in file.lower().strip()][0]
-				outCSVName = os.path.join(output_path,'crop_flows','crop_concentrations.csv')
-				subprocess.run(["gdal2xyz.py",'-csv', fpath,outCSVName])
 
-				'''Load points and convert to geodataframe with coordinates'''    
-				load_points = pd.read_csv(outCSVName,header=None,names=['x','y','tons'],index_col=None)
-				load_points = load_points[load_points['tons'] > 0]
+	# all the crop OD pairs
+	for file in os.listdir(crop_data_path):
+		if file.endswith(".tif") and ('spam_p' in file.lower().strip()):
+			fpath = os.path.join(crop_data_path, file)
+			crop_name = [cr for cr in crop_names if cr in file.lower().strip()][0]
+			outCSVName = os.path.join(output_path,'crop_flows','crop_concentrations.csv')
+			subprocess.run(["gdal2xyz.py",'-csv', fpath,outCSVName])
 
-				geometry = [Point(xy) for xy in zip(load_points.x, load_points.y)]
-				load_points = load_points.drop(['x', 'y'], axis=1)
-				crs = {'init': 'epsg:4326'}
-				crop_points = gpd.GeoDataFrame(load_points, crs=crs, geometry=geometry)
+			'''Load points and convert to geodataframe with coordinates'''    
+			load_points = pd.read_csv(outCSVName,header=None,names=['x','y','tons'],index_col=None)
+			load_points = load_points[load_points['tons'] > 0]
+
+			geometry = [Point(xy) for xy in zip(load_points.x, load_points.y)]
+			load_points = load_points.drop(['x', 'y'], axis=1)
+			crs = {'init': 'epsg:4326'}
+			crop_points = gpd.GeoDataFrame(load_points, crs=crs, geometry=geometry)
 				
-				del load_points	
+			del load_points	
 			
-				# clip all to province
-				# prov_crop = gdf_geom_clip(crop_points,province_geom)
-				if crop_name == 'rice':
-					crop_points = assign_daily_min_max_tons_rice(crop_points,rice_prod_months)
-				else:
-					crop_points['min_{}'.format(crop_name)] = 1.0*crop_points['tons']/365.0
-					crop_points['max_{}'.format(crop_name)] = 1.0*crop_points['tons']/365.0
+			# clip all to province
+			# prov_crop = gdf_geom_clip(crop_points,province_geom)
+			if crop_name == 'rice':
+				crop_points = assign_daily_min_max_tons_rice(crop_points,rice_prod_months)
+			else:
+				crop_points['min_{}'.format(crop_name)] = 1.0*crop_points['tons']/365.0
+				crop_points['max_{}'.format(crop_name)] = 1.0*crop_points['tons']/365.0
 
-				# crop_points_sindex = crop_points.sindex
+			# crop_points_sindex = crop_points.sindex
 				
-				crop_points['province_name'] = crop_points.geometry.apply(lambda x: get_nearest_node(x,sindex_provinces,provinces,'name_eng'))
-				# crop_points['node_id'] = crop_points.geometry.apply(lambda x: get_nearest_node(x,sindex_nodes,nodes,'node_id'))
-				# crop_points.to_file(os.path.join(output_path,'Voronoi','crop_test.shp'))
-		# 		# print (crop_points)
-				crop_points['node_id'] = crop_points.apply(lambda x: get_nearest_node_within_region(x,nodes,'node_id','province_name'),axis = 1)
+			crop_points['province_name'] = crop_points.apply(lambda x: extract_gdf_values_containing_nodes(x,sindex_provinces,provinces,'name_eng'),axis = 1)
+			national_ods_modes_df = []
+			for m in range(len(modes_file_paths)):
+				nodes = modes_df[m]
+				crop_pts = crop_points.copy(deep = True)
+				crop_pts['node_id'] = crop_pts.apply(lambda x: get_nearest_node_within_region(x,nodes,'node_id','province_name'),axis = 1)
 				# crop_points.to_file(os.path.join(output_path,'Voronoi','crop_test_2.shp'))
-
-				crop_points = crop_points[crop_points['node_id'] != '']
-				crop_points = crop_points[['node_id','min_{}'.format(crop_name),'max_{}'.format(crop_name)]]
-				crop_nodes = crop_points.groupby(['node_id'])['min_{}'.format(crop_name),'max_{}'.format(crop_name)].sum().reset_index()
+				crop_pts = crop_pts[crop_pts['node_id'] != '']
+				crop_pts = crop_pts[['node_id','min_{}'.format(crop_name),'max_{}'.format(crop_name)]]
+				crop_nodes = crop_pts.groupby(['node_id'])['min_{}'.format(crop_name),'max_{}'.format(crop_name)].sum().reset_index()
 				crop_nodes = crop_nodes.reset_index()
-
 				# crop_nodes.to_csv(os.path.join(output_path,'Voronoi','crop_test_2.csv'),index = False)
-				del crop_points
 
+				del crop_pts
 				nodes = pd.merge(nodes,crop_nodes,how='left', on=['node_id']).fillna(0)
 				del crop_nodes
 
@@ -392,10 +406,15 @@ def main():
 									
 					print (o,d,fval,modes[m],crop_name)
 				
-				national_ods_df.append(pd.DataFrame(od_list,columns = ['origin','o_region','destination','d_region','min_{}'.format(crop_name),'max_{}'.format(crop_name)]))
-				del od_list
+				national_ods_modes_df.append(pd.DataFrame(od_list,columns = ['origin','o_region','destination','d_region','min_{}'.format(crop_name),'max_{}'.format(crop_name)]))
+				del od_list, nodes
 
-		all_ods = pd.concat(national_ods_df, axis=0, sort = 'False', ignore_index=True).fillna(0)
+			del crop_points
+			national_ods_df.append(national_ods_modes_df)
+
+	national_ods_df = list(map(list,zip(*national_ods_df)))
+	for m in range(len(modes_file_paths)):
+		all_ods = pd.concat(national_ods_df[m], axis=0, sort = 'False', ignore_index=True).fillna(0)
 
 		all_min_cols = ind_cols + ['min_{}'.format(c) for c in crop_names]
 		all_ods['min_tons'] = all_ods[all_min_cols].sum(axis = 1)
@@ -408,13 +427,13 @@ def main():
 
 		all_ods_val_cols = [c for c in all_ods.columns.values.tolist() if c not in ('origin','o_region','destination','d_region')]
 		all_ods = all_ods.groupby(['origin','o_region','destination','d_region'])[all_ods_val_cols].sum().reset_index() 
-		
+			
 		all_ods_regions = all_ods[['o_region','d_region'] + all_ods_val_cols]
 		all_ods_regions = all_ods_regions.groupby(['o_region','d_region'])[all_ods_val_cols].sum().reset_index()
 		all_ods_regions.to_excel(excl_wrtr_reg,modes[m],index = False)
 		excl_wrtr_reg.save()
 		del all_ods_regions
-		
+			
 		all_ods = all_ods[all_ods['max_tons'] > 0.5]
 		# flow_output_csv = os.path.join(output_path,'flow_mapping_paths','national_scale_{}_ods.csv'.format(modes[m]))
 		# all_ods.to_csv(flow_output_csv,index = False)
