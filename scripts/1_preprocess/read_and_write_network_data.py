@@ -32,12 +32,12 @@ def main():
 	# sub_enc = [['latin1','utf-8','utf-8','utf-8']]
 	# cm_attr = [['','','','']]
 
-	# sectors = ['Railways']
-	# sector_ids = ['rail']
-	# subsectors = [['national_rail']]
-	# sub_enc = [['utf-8']]
-	# cm_attr = [['railwaylin']]
-	# cm_attr_typ = [['character varying']]
+	sectors = ['Railways']
+	sector_ids = ['rail']
+	subsectors = [['national_rail']]
+	sub_enc = [['utf-8']]
+	cm_attr = [['railwaylin']]
+	cm_attr_typ = [['character varying']]
 
 	# sectors = ['Roads','Railways']
 	# sector_ids = ['road','rail']
@@ -69,12 +69,18 @@ def main():
 	# edg_gm = 'geom'
 	# nd_prox = 0
 
-	sectors = ['Roads']
-	sector_ids = ['road']
-	subsectors = [['national_network_edges_v1']]
-	sub_enc = [['utf-8']]
-	cm_attr = [['','','']]
-	cm_attr_typ = [['','','']]
+	# sectors = ['Roads']
+	# sector_ids = ['road']
+	# subsectors = [['national_network_edges_v1']]
+	# sectors = ['Waterways']
+	# sector_ids = ['water']
+	# subsectors = [['waterways']]
+	# sectors = ['Air']
+	# sector_ids = ['air']
+	# subsectors = [['air']]
+	# sub_enc = [['utf-8']]
+	# cm_attr = [['']]
+	# cm_attr_typ = [['']]
 
 	pt_id = 'gid'
 	ln_id = 'gid'
@@ -91,6 +97,7 @@ def main():
 	nd_gm = 'geom'
 	edg_gm = 'geom'
 	nd_prox = 20
+	skip_ids = ['gid','edge_id','from_node','to_node','node_id','geom']
 
 	for s in range(len(sectors)):
 		sect = sectors[s]
@@ -98,7 +105,8 @@ def main():
 			subsect = subsectors[s][sb_list]
 			input_path = os.path.join(config['paths']['data'],'infrastructure_preprocessed_data',sect,subsect)
 			pt_table, ln_table, pt_gm_typ, ln_gm_typ = nc.write_shapefiles_to_database(input_path,sub_enc[s][sb_list])
-			pt_table = '' 
+			print (pt_table, ln_table, pt_gm_typ, ln_gm_typ)
+			# pt_table = '' 
 			# ln_table = 'national_network_edges_v1' 
 			# pt_gm_typ= '' 
 			# ln_gm_typ = 'multilinestring'
@@ -107,16 +115,21 @@ def main():
 				# We have a point file and a line file
 				sln_table, sln_id = check_single_linegeom_creation(ln_table,ln_id,ln_gm_typ,cm_attr[s][sb_list],cm_attr_typ[s][sb_list])
 				print ("Done with geometry check")
+				# print (sln_table, sln_id)
+				# print (pt_table,sln_table,pt_id,ln_id,cm_attr[s][sb_list],cm_attr[s][sb_list],pt_gm,ln_gm,dst_thr,dst_prox)
 				pt_ln_list = nc.match_points_to_lines(pt_table,sln_table,pt_id,ln_id,cm_attr[s][sb_list],cm_attr[s][sb_list],pt_gm,ln_gm,dst_thr,dst_prox)
-				print ("Done with mathcing points and lines")
+				# print (pt_ln_list)
+				# print (list(set([p[1] for p in pt_ln_list])))
+				print ("Done with matching points and lines")
+				# print (pt_table,sln_table,pt_id,ln_id,sln_id,pt_gm,ln_gm,pt_ln_list,sector_ids[s],dst_thr,nd_table,edg_table)
 				nc.insert_to_node_edge_tables_from_given_points_lines(pt_table,sln_table,pt_id,ln_id,sln_id,pt_gm,ln_gm,pt_ln_list,sector_ids[s],dst_thr,nd_table,edg_table)	
 				print ("Done with inserting nodes and edges")
 				nc.eliminate_common_nodes_from_network(nd_table,edg_table,nd_id,nd_gm,nd_prox)
 				print ("Done with eliminating common nodes")
 				nc.bisect_lines_by_nodes(nd_table,edg_table,nd_id,edg_id,edg_int_id,f_nd,t_nd,ln_id,nd_gm,edg_gm,nd_prox)
 				print ("Done with line bisection by nodes")
-				nc.add_all_columns_from_one_table_to_another(ln_table,edg_table,ln_id,ln_gm)
-				nc.add_all_columns_from_one_table_to_another(pt_table,nd_table,pt_id,pt_gm)
+				nc.add_all_columns_from_one_table_to_another(ln_table,edg_table,ln_id,skip_ids)
+				nc.add_all_columns_from_one_table_to_another(pt_table,nd_table,pt_id,skip_ids)
 				print ("Done with adding columns")
 			else:
 				# We only have a line file from which we create node and edge tables
@@ -128,7 +141,7 @@ def main():
 				print ("Done with eliminating common nodes")
 				nc.bisect_lines_by_nodes(nd_table,edg_table,nd_id,edg_id,edg_int_id,f_nd,t_nd,ln_id,nd_gm,edg_gm,nd_prox)
 				print ("Done with line bisection by nodes")
-				nc.add_all_columns_from_one_table_to_another(ln_table,edg_table,ln_id,ln_gm)
+				nc.add_all_columns_from_one_table_to_another(ln_table,edg_table,ln_id,skip_ids)
 				print ("Done with adding columns")
 					
 			output_path = os.path.join(config['paths']['data'],'infrastructure_processed_data',sect,subsect)

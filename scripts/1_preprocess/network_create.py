@@ -676,6 +676,7 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 			lc = row[0]
 			la = row[1]
 			nlist = [(n,m) for (n,l,m) in point_line_list if l == lc]
+			# print (lc,nlist)
 			if len(nlist) > 0:
 				'''
 				Find the points which have some line matches in close proximity
@@ -711,6 +712,7 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 						pt_tup_list.append((nid,pt_geom,st_pt_dist,en_pt_dist,frac))
 
 
+					# print (pt_tup_list)
 					if len(pt_tup_list) > 0:
 						pt_id_sorted = [p for (p,w,x,y,z) in sorted(pt_tup_list, key=lambda pair: pair[-1])]
 						pt_geom_sorted = [w for (p,w,x,y,z) in sorted(pt_tup_list, key=lambda pair: pair[-1])]
@@ -758,6 +760,7 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 										)'''.format(edge_table,eid,e_id,nfid,ntid,la,line_geom,pt_st_frac,pt_en_frac,line_table,line_id,lc)
 							cur.execute(sql_insert)
 							conn.commit()
+							# print ('Line from node matchs',e_id,nf_id,nt_id)
 
 
 						for p in range(len(pt_id_sorted)):
@@ -774,7 +777,29 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 				Find the points which have some line matches but not in close proximity
 				'''
 				nl = [n for (n,m) in nlist if m >= dist_threshold]
-				if len(nl) > 0:		
+				# print (nl)
+				if len(nl) > 0:
+					sql_query = '''SELECT ST_AsText({0}),
+								ST_AsText(ST_StartPoint({1})), 
+								ST_AsText(ST_EndPoint({2}))
+								FROM {3}
+								WHERE {4} = {5}
+								'''.format(line_geom,line_geom,line_geom,line_table,line_id,lc)
+					cur.execute(sql_query)
+					r_layer = cur.fetchall()
+					for r in r_layer:
+						gt = r[0]
+						st_pt = r[1]
+						en_pt = r[2]
+
+						e_id += 1
+						n_id += 1
+						nf_id = n_id
+						n_id += 1
+						nt_id = n_id
+
+						insert_values_to_node_edge_tables(sector,nf_id,nt_id,e_id,node_table,edge_table,la,gt,st_pt,en_pt,conn)		
+					
 					nl = nl + [0]	
 					sql_query = '''SELECT A.{0},
 								ST_AsText(A.{1}),
@@ -786,12 +811,14 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 								AND B.{11} = {12}
 								'''.format(point_id,point_geom,line_geom,point_geom,point_geom,line_geom,
 									point_geom,point_table,line_table,point_id,str(tuple(nl)),line_id,lc)
+					# print (sql_query)
 					cur.execute(sql_query)
 					r_layer = cur.fetchall()
 					for r in r_layer:
 						nid = r[0]
 						pt_geom = r[1]
 						cl_pt_geom = r[2]
+						gt = r[3]
 						e_id += 1
 						eid = sector + 'e_' + str(e_id)
 
@@ -803,24 +830,26 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 						sql_query = '''INSERT INTO {0} (edge_id,g_id,from_node,to_node,gid,geom)
 									VALUES ('{1}',{2},'{3}','{4}',{5},ST_GeomFromText('{6}',4326))
 									'''.format(edge_table,eid,e_id,nfid,ntid,la,gt)
+						# print (sql_query)
 						cur.execute(sql_query)
 						conn.commit()
 						
-						sql_insert = '''INSERT INTO public.{0}
+						sql_query = '''INSERT INTO public.{0}
 									(node_id,gid,geom) 
 									VALUES ('{1}',{2},
 									ST_GeomFromText('{3}',4326))
-									'''.format(node_table,nfid,nid,ptgeom)
+									'''.format(node_table,nfid,nid,pt_geom)
 						cur.execute(sql_query)
 						conn.commit()
 
-						sql_insert = '''INSERT INTO public.{0}
+						sql_query = '''INSERT INTO public.{0}
 									(node_id,gid,geom) 
 									VALUES ('{1}',{2},
 									ST_GeomFromText('{3}',4326))
 									'''.format(node_table,ntid,n_id,cl_pt_geom)
 						cur.execute(sql_query)
 						conn.commit()
+						# print ('Joining point to lines',e_id,nid,n_id)
 						
 
 			else:
@@ -844,6 +873,7 @@ def insert_to_node_edge_tables_from_given_points_lines(point_table,line_table,po
 					nt_id = n_id
 
 					insert_values_to_node_edge_tables(sector,nf_id,nt_id,e_id,node_table,edge_table,la,gt,st_pt,en_pt,conn)
+					# print('nodes from end points',e_id,nf_id,nt_id)
 
 
 	conn.close()
@@ -896,7 +926,10 @@ def eliminate_common_nodes_from_network(node_table,edge_table,node_id,node_geom,
 		out = nx.connected_components(net)
 
 		for i in out:
-			nodes = sorted(list(i))
+			i_int = sorted([int(x.split('_')[1]) for x in list(i)])
+			i_name = [x.split('_')[0] for x in list(i)][0]
+			nodes = [i_name + '_' + str(x) for x in i_int]
+
 			del_nodes = nodes[1:] + ['0']
 			sql_update = '''UPDATE {0} SET from_node = '{1}'
 						WHERE from_node IN {2}
@@ -1048,7 +1081,7 @@ def bisect_lines_by_nodes(node_table,edge_table,node_id,edge_id,edge_int_id,from
 
 	conn.close()
 
-def add_all_columns_from_one_table_to_another(original_table,new_table,common_id,geom_id):
+def add_all_columns_from_one_table_to_another(original_table,new_table,common_id,skip_id_list):
 	# =========================================================================
 	# Copy attribute columns from one table to another. 
 	# Excluding the geometry and ID columns which should already be there
@@ -1072,7 +1105,7 @@ def add_all_columns_from_one_table_to_another(original_table,new_table,common_id
 		cur.execute(sql_query)
 		read_layer = cur.fetchall()
 		for row in read_layer:
-			if row[0] not in (common_id,geom_id):
+			if row[0] not in skip_id_list:
 				col_names.append(row[0])
 				col_types.append(row[1])
 		
