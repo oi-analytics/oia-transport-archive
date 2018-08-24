@@ -202,7 +202,7 @@ def main():
 		# scenarios = list(set(all_edge_fail_scenarios.index.values.tolist()))
 
 		all_edge_fail_scenarios = all_edge_fail_scenarios.set_index(selection_criteria)
-		criteria_set = list(set(all_edge_fail_scenarios.index.values.tolist()))
+		scenarios = list(set(all_edge_fail_scenarios.index.values.tolist()))
 		
 		multiple_ef_list = []
 		for criteria in criteria_set:

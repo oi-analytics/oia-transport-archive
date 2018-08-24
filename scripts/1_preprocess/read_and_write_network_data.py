@@ -46,10 +46,33 @@ def main():
 	# cm_attr = [[''],['railwaylin']]
 	# cm_attr_typ = [[''],['character varying']]
 
+	# sectors = ['Roads']
+	# sector_ids = ['road']
+	# subsectors = [['laocai_roads','binhdinh_roads','thanhhoa_roads']]
+	# sub_enc = [['utf-8','utf-8','utf-8']]
+	# cm_attr = [['','','']]
+	# cm_attr_typ = [['','','']]
+
+	# pt_id = 'gid'
+	# ln_id = 'gid'
+	# pt_gm = 'geom'
+	# ln_gm = 'geom'
+	# dst_thr = 100
+	# dst_prox = 20
+
+	# nd_id = 'node_id'
+	# edg_id = 'edge_id'
+	# edg_int_id = 'g_id'
+	# f_nd = 'from_node'
+	# t_nd = 'to_node'
+	# nd_gm = 'geom'
+	# edg_gm = 'geom'
+	# nd_prox = 0
+
 	sectors = ['Roads']
 	sector_ids = ['road']
-	subsectors = [['laocai_roads','binhdinh_roads','thanhhoa_roads']]
-	sub_enc = [['utf-8','utf-8','utf-8']]
+	subsectors = [['national_network_edges_v1']]
+	sub_enc = [['utf-8']]
 	cm_attr = [['','','']]
 	cm_attr_typ = [['','','']]
 
@@ -67,7 +90,7 @@ def main():
 	t_nd = 'to_node'
 	nd_gm = 'geom'
 	edg_gm = 'geom'
-	nd_prox = 0
+	nd_prox = 20
 
 	for s in range(len(sectors)):
 		sect = sectors[s]
@@ -75,6 +98,10 @@ def main():
 			subsect = subsectors[s][sb_list]
 			input_path = os.path.join(config['paths']['data'],'infrastructure_preprocessed_data',sect,subsect)
 			pt_table, ln_table, pt_gm_typ, ln_gm_typ = nc.write_shapefiles_to_database(input_path,sub_enc[s][sb_list])
+			pt_table = '' 
+			# ln_table = 'national_network_edges_v1' 
+			# pt_gm_typ= '' 
+			# ln_gm_typ = 'multilinestring'
 			nd_table, edg_table = nc.create_node_edge_tables_from_point_line_tables(pt_table,ln_table)
 			if pt_table:
 				# We have a point file and a line file
