@@ -135,10 +135,10 @@ def igraph_scenario_edge_failures(network_df_in,edge_failure_set,flow_dataframe,
 		no_access = select_flows[(~select_flows['origin'].isin(nodes_name)) | (~select_flows['destination'].isin(nodes_name))]
 		if len(no_access.index) > 0:
 			for iter_,value in no_access.iterrows():
-				edge_dict = {'edge_id':edge,
+				edge_dict = {'edge_id':str(edge_failure_set),
 							'new_distance':0,'new_time':0,'new_cost':0,'no_access': 1}
 				
-				edge_fail_dictionary.append({'edge_id':edge,'origin':value['origin'],'destination':value['destination'],
+				edge_fail_dictionary.append({'edge_id':str(edge_failure_set),'origin':value['origin'],'destination':value['destination'],
 									'new_distance':0,'new_time':0,'new_cost':0,'no_access': 1})
 
 
@@ -166,10 +166,10 @@ def igraph_scenario_edge_failures(network_df_in,edge_failure_set,flow_dataframe,
 							new_time += network_graph.es[n][time_criteria]
 							new_gcost += network_graph.es[n][cost_criteria]
 
-						edge_fail_dictionary.append({'edge_id':edge,'origin':origin,'destination':destinations,
+						edge_fail_dictionary.append({'edge_id':str(edge_failure_set),'origin':origin,'destination':destinations,
 											'new_distance':new_dist,'new_time':new_time,'new_cost':new_gcost,'no_access': 0})
 					else:
-						edge_fail_dictionary.append({'edge_id':edge,'origin':origin,'destination':destinations,
+						edge_fail_dictionary.append({'edge_id':str(edge_failure_set),'origin':origin,'destination':destinations,
 											'new_distance':0,'new_time':0,'new_cost':0,'no_access': 1})
 						
 				else:
@@ -186,10 +186,10 @@ def igraph_scenario_edge_failures(network_df_in,edge_failure_set,flow_dataframe,
 								new_time += network_graph.es[n][time_criteria]
 								new_gcost += network_graph.es[n][cost_criteria]
 
-							edge_fail_dictionary.append({'edge_id':edge,'origin':origin,'destination':destinations[p],
+							edge_fail_dictionary.append({'edge_id':str(edge_failure_set),'origin':origin,'destination':destinations[p],
 											'new_distance':new_dist,'new_time':new_time,'new_cost':new_gcost,'no_access': 0})
 						else:
-							edge_fail_dictionary.append({'edge_id':edge,'origin':origin,'destination':destinations[p],
+							edge_fail_dictionary.append({'edge_id':str(edge_failure_set),'origin':origin,'destination':destinations[p],
 											'new_distance':0,'new_time':0,'new_cost':0,'no_access': 1})
 
 	return edge_fail_dictionary
@@ -214,8 +214,9 @@ def main():
 	cols = ['origin','destination','min_edge_path','max_edge_path','min_netrev','max_netrev','min_croptons','max_croptons',
 			'min_distance','max_distance','min_time','max_time','min_gcost','max_gcost']
 
-	selection_criteria = ['commune_id','hazard_type','model','climate_scenario','year','probability']
-	filter_cols = ['edge_id','exposed_length'] + selection_criteria
+	# selection_criteria = ['commune_id','hazard_type','model','climate_scenario','year','probability']
+	selection_criteria = ['district_id','hazard_type','model','climate_scenario','year','probability']
+	filter_cols = ['edge_id','exposure_length'] + selection_criteria
 	'''
 	Path OD flow disruptions
 	'''
@@ -223,8 +224,9 @@ def main():
 	'''
 	Get the modal shares
 	'''
-	modes_file_paths = [('Roads','national_roads'),('Railways','national_rail'),('Waterways','waterways'),('Waterways','waterways')]
-	modes_file_paths = [('Roads','national_roads'),('Railways','national_rail')]
+	# modes_file_paths = [('Roads','national_roads'),('Railways','national_rail'),('Waterways','waterways'),('Waterways','waterways')]
+	# modes_file_paths = [('Roads','national_roads'),('Railways','national_rail')]
+	modes_file_paths = [('Roads','national_roads')]
 	modes = ['road','rail','inland','coastal']
 	veh_wt = [20,800,800,1200]
 	usage_factors = [(0,0),(0,0),(0.2,0.25),(0.2,0.25)]
@@ -269,7 +271,7 @@ def main():
 			multiple_ef_list.append(tuple(efail))
 
 		multiple_ef_scenarios_df = pd.DataFrame(multiple_ef_scenarios)
-		df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_scenarios_national_{0}.csv'.format(modes[m]))
+		df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_scenarios_national_{0}_district_scenarios_2.csv'.format(modes[m]))
 		multiple_ef_scenarios_df.to_csv(df_path,index = False)
 		# print (multiple_ef_list)
 		multiple_ef_list = [list(x) for x in set(multiple_ef_list)]
@@ -277,15 +279,16 @@ def main():
 		# print (multiple_ef_list[:10])
 		flow_df = pd.read_excel(flow_paths_data,sheet_name = modes[m])
 		for t in range(len(types)):
+			ef_list = []
 			for edge_fail in multiple_ef_list:
 				ef_dict = igraph_scenario_edge_failures(G_df,edge_fail,flow_df,veh_wt[m],usage_factors[m][0],usage_factors[m][1],path_types[t],cost_types[t],time_types[t])
 				if ef_dict:
 					ef_list += ef_dict
 			
-				print ('Done with mode {0} edge {1} type {2}'.format(modes[m],edge,types[t]))
+				print ('Done with mode {0} edge {1} type {2}'.format(modes[m],edge_fail,types[t]))
 
 			df = pd.DataFrame(ef_list)
-			df.to_csv(os.path.join(output_path,'failure_results','multiple_edge_failures_all_paths_national_{0}_{1}.csv'.format(modes[m],types[t])),index = False)
+			df.to_csv(os.path.join(output_path,'failure_results','multiple_edge_failures_all_paths_national_{0}_{1}_district_scenarios_2.csv'.format(modes[m],types[t])),index = False)
 			
 			select_cols = ['origin','destination','o_region','d_region',dist_types[t],time_types[t],cost_types[t],vehicle_types[t]] + ind_crop_cols + [rice_type[t],tons_types[t]]
 			flow_df_select = flow_df[select_cols]
@@ -295,20 +298,20 @@ def main():
 			flow_df_select['dist_diff'] = flow_df_select['new_distance'] - flow_df_select[dist_types[t]]
 			flow_df_select['time_diff'] = flow_df_select['new_time'] - flow_df_select[time_types[t]]
 			flow_df_select['transport_loss'] = (1 - flow_df_select['no_access'])*flow_df_select[vehicle_types[t]]*(flow_df_select['new_cost'] - flow_df_select[cost_types[t]])
-			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_all_path_impacts_national_{0}_{1}.csv'.format(modes[m],types[t]))
+			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_all_path_impacts_national_{0}_{1}_district_scenarios_2.csv'.format(modes[m],types[t]))
 			flow_df_select.to_csv(df_path,index = False)
 
 			select_cols = ['edge_id','o_region','d_region','no_access'] + ind_crop_cols + [rice_type[t],tons_types[t]]
 			egde_impact = flow_df_select[select_cols]
 			egde_impact = egde_impact[egde_impact['no_access'] == 1]
 			egde_impact = egde_impact.groupby(['edge_id', 'o_region','d_region'])[ind_crop_cols + [rice_type[t],tons_types[t]]].sum().reset_index()
-			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_totals_national_{0}_{1}.csv'.format(modes[m],types[t]))
+			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_totals_national_{0}_{1}_district_scenarios_2.csv'.format(modes[m],types[t]))
 			egde_impact.to_csv(df_path,index = False)
 			# edge_fail_ranges.append(egde_impact)
 			egde_impact = flow_df_select[select_cols+['transport_loss']]
 			egde_impact = egde_impact[egde_impact['no_access'] == 0]
 			egde_impact = egde_impact.groupby(['edge_id', 'o_region','d_region'])['transport_loss'].sum().reset_index()
-			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_transport_loss_national_{0}_{1}.csv'.format(modes[m],types[t]))
+			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_transport_loss_national_{0}_{1}_district_scenarios_2.csv'.format(modes[m],types[t]))
 			egde_impact.to_csv(df_path,index = False)
 		
 			
