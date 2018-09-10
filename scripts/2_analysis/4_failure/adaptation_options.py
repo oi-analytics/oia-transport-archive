@@ -21,8 +21,8 @@ import sys
 import math
 import copy 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from scripts.utils import load_config
-from scripts.transport_network_creation import province_shapefile_to_network, add_igraph_generalised_costs_province_roads, province_shapefile_to_dataframe
+from scripts.utils import *
+from scripts.transport_network_creation import *
 
 
 def net_present_value(adaptation_options_dataframe,strategy_parameter,parameter_value_list,min_eal,max_eal,edge_options_dictionary,edge_width = 1.0, edge_length = 1.0):
@@ -66,7 +66,7 @@ def main():
 
 	start_year = 2016
 	end_year = 2050
-	truck_unit_wt = [5.0,20.0]
+	truck_unit_wt = [5.0]
 
 	discount_rate = 12.0
 	total_discount_ratio = []
@@ -161,7 +161,7 @@ def main():
 	types = ['min','max']
 
 	fail_scenarios_data = os.path.join(output_path,'hazard_scenarios','province_roads_hazard_intersections.xlsx')
-	rd_prop_file = os.path.join(data_path,'Roads','road_properties','road_properties.xlsx')
+	rd_prop_file = os.path.join(data_path,'mode_properties','road_properties.xlsx')
 
 	duration_max = [10,15,20,25,30]
 	length_thr = 100.0
@@ -233,6 +233,54 @@ def main():
 						road_cond = sc[-4]
 						width = sc[-2]
 						# print (road_cond,width)
+
+						min_height = max(all_edge_fail_scenarios.loc[[sc],'min_val'].values.tolist())
+						max_height = max(all_edge_fail_scenarios.loc[[sc],'max_val'].values.tolist())
+						min_band_num = min(all_edge_fail_scenarios.loc[[sc],'band_num'].values.tolist())
+						max_band_num = max(all_edge_fail_scenarios.loc[[sc],'band_num'].values.tolist())
+						prob = all_edge_fail_scenarios.loc[[sc],'probability'].values
+						if len(prob) > 1:
+							exposure_len = all_edge_fail_scenarios.loc[[sc],'exposure_length'].values
+							per = all_edge_fail_scenarios.loc[[sc],'percent_exposure'].values
+
+							prob_tup = list(zip(prob,exposure_len,per))
+							u_pr = sorted(list(set(prob.tolist())))
+							exposure_len = []
+							per = []
+							risk_wt = []
+							for pr in u_pr:
+								per_exp = sum([z for (x,y,z) in prob_tup if x == pr])
+								exp_len = sum([y for (x,y,z) in prob_tup if x == pr])
+								if per_exp > 100.0:
+									exposure_len.append(100.0*exp_len/per_exp)
+									per.append(100.0)
+									risk_wt.append(1.0*duration_max[dur])
+								else:
+									exposure_len.append(exp_len)
+									if exp_len < length_thr:
+										per.append(per_exp)
+										risk_wt.append(0.01*duration_max[dur]*per_exp)
+									else:
+										per.append(100.0)
+										risk_wt.append(1.0*duration_max[dur])
+
+
+
+						else:
+							prob = prob[0]
+							min_exposure_len = all_edge_fail_scenarios.loc[sc,'exposure_length']
+							max_exposure_len = all_edge_fail_scenarios.loc[sc,'exposure_length']
+							min_per = all_edge_fail_scenarios.loc[sc,'percent_exposure']
+							max_per = all_edge_fail_scenarios.loc[sc,'percent_exposure']
+							min_dur = 0.01*duration_max[dur]*sub_df.loc[sc,'percent_exposure']
+							if sub_df.loc[sc,'exposure_length'] < length_thr:
+								max_dur = 0.01*duration_max[dur]*max_per
+								risk_wt = 0.01*duration_max[dur]*max_per
+							else:
+								max_dur = duration_max[dur]
+								risk_wt = duration_max[dur]
+
+
 
 						sub_df = all_edge_fail_scenarios.loc[sc]
 						if len(sub_df.index) == 1:
