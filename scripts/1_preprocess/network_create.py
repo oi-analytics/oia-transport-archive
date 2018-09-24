@@ -2,6 +2,16 @@
 Get a shapefile and convert it into a network
 @author: Raghav Pant
 Date: June 21, 2018
+
+Python code to convert a point and line dataset into a node and edge network structure
+The code: 
+1. Inputs in point and line shapefiles, 
+2. Writes them to a PostGreSQL/PostGIS database,
+3. Matches the points and lines to each other,
+4. Creates new lines by snapping existing lines to the points,
+5. Eliminates multiple points with same locations to create a single commom point for intersecting lines,
+6. Writes in the attributes to the original shapefile to the new node and edge tables,
+7. Outputs the results as new shapefiles
 """
 import configparser
 import csv
@@ -22,19 +32,6 @@ import networkx as nx
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from scripts.utils import load_config
 import scripts.dbutils as db
-
-# =========================================================================================================
-# Python code to convert a point and line dataset into a node and edge network structure
-# The code: 
-# 1. Inputs in point and line shapefiles, 
-# 2. Writes them to a PostGreSQL/PostGIS database,
-# 3. Matches the points and lines to each other,
-# 4. Creates new lines by snapping existing lines to the points,
-# 5. Eliminates multiple points with same locations to create a single commom point for intersecting lines,
-# 6. Writes in the attributes to the original shapefile to the new node and edge tables,
-# 7. Outputs the results as new shapefiles    
-# ==========================================================================================================
-
 def open_connection_psycopg2():
 	# ========================================
 	# Create the database connection
