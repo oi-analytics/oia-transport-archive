@@ -23,8 +23,8 @@ import osgeo.ogr as ogr
 import pandas as pd
 import copy
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import load_config
+
+from vtra.utils import load_config
 
 def extract_points(gm):
 	x_pts = []
@@ -95,7 +95,7 @@ def add_columns_to_table(table_name, table_match, col_name_list,col_type_list, c
 		connection.commit()
 
 		sql_query = '''
-					update {0} set {1} = (select {2} from {3} as A where {4}.{5} = A.{6}) 
+					update {0} set {1} = (select {2} from {3} as A where {4}.{5} = A.{6})
 					'''.format(table_name,col_name_list[c],col_name_list[c],table_match,table_name,col_id,col_id)
 		cursor.execute(sql_query)
 		connection.commit()
@@ -116,7 +116,7 @@ def add_columns_to_table_match_columns(table_name, table_match, col_name_list,co
 		connection.commit()
 
 		sql_query = '''
-					update {0} set {1} = (select {2} from {3} as A where {4}.{5} = A.{6}) 
+					update {0} set {1} = (select {2} from {3} as A where {4}.{5} = A.{6})
 					'''.format(table_name,col_name_list[c],col_name_list[c],table_match,table_name,col_id,col_id_match)
 		cursor.execute(sql_query)
 		connection.commit()
@@ -133,7 +133,7 @@ def add_new_id_column(table_name,col_str,col_name,col_id_name, cursor, connectio
 	read_layer = cursor.fetchall()
 	for row in read_layer:
 		col_id_list.append(row[0])
-	
+
 
 	sql_query = "alter table {0} add column {1} character varying".format(table_name,col_name)
 	cursor.execute(sql_query)
@@ -143,7 +143,7 @@ def add_new_id_column(table_name,col_str,col_name,col_id_name, cursor, connectio
 		cid = col_str + str(c)
 
 		sql_query = '''
-					update {0} set {1} = '{2}' where {3} = {4} 
+					update {0} set {1} = '{2}' where {3} = {4}
 					'''.format(table_name,col_name,cid,col_id_name,c)
 		cursor.execute(sql_query)
 		connection.commit()
@@ -214,7 +214,7 @@ node_layer = 'waterports'
 edge_layer = 'waterroutes'
 
 
-line_id_list = [] 
+line_id_list = []
 sql_query = '''SELECT {0} FROM {1}'''.format(edge_id,edge_layer)
 cur.execute(sql_query)
 read_layer = cur.fetchall()
@@ -223,16 +223,16 @@ for row in read_layer:
 
 nid_lid_list = []
 
-sql_query = '''SELECT A.{0} as nid, 
-			(select B.{1} from {2} as B order by st_distance(A.geom,B.geom) asc limit 1) as lid  
+sql_query = '''SELECT A.{0} as nid,
+			(select B.{1} from {2} as B order by st_distance(A.geom,B.geom) asc limit 1) as lid
 			from {3} as A
-			'''.format(node_id,edge_id,edge_layer,node_layer) 
+			'''.format(node_id,edge_id,edge_layer,node_layer)
 read_layer = conn2.ExecuteSQL(sql_query)
 f = read_layer.GetNextFeature()
 while f is not None:
 	nid = f.GetField('nid')
 	lid = f.GetField('lid')
-	
+
 	nid_lid_list.append((nid,lid))
 
 	f.Destroy()
@@ -240,16 +240,16 @@ while f is not None:
 
 '''
 STEP 4:
-We will create the new edge and node layers 
+We will create the new edge and node layers
 '''
 '''
 create the edge layer
 '''
 
 sql_query = '''DROP TABLE IF EXISTS
-			public.wateredges 
+			public.wateredges
 			'''
-sql_create = conn2.ExecuteSQL(sql_query) 
+sql_create = conn2.ExecuteSQL(sql_query)
 
 sql_query = '''CREATE TABLE public.wateredges
 			(
@@ -257,8 +257,8 @@ sql_query = '''CREATE TABLE public.wateredges
 			node_f_id character varying(254),
 			node_t_id character varying(254),
 			gid integer,
-			geom geometry(LineString,4326) 
-			) 
+			geom geometry(LineString,4326)
+			)
 			'''
 sql_create = conn2.ExecuteSQL(sql_query)
 
@@ -266,16 +266,16 @@ sql_create = conn2.ExecuteSQL(sql_query)
 create the node layer
 '''
 sql_query = '''DROP TABLE IF EXISTS
-			public.waternodes 
+			public.waternodes
 			'''
-sql_create = conn2.ExecuteSQL(sql_query) 
+sql_create = conn2.ExecuteSQL(sql_query)
 
 sql_query = '''CREATE TABLE public.waternodes
 			(
 			node_id character varying(254),
 			gid integer,
-			geom geometry(Point,4326) 
-			) 
+			geom geometry(Point,4326)
+			)
 			'''
 sql_create = conn2.ExecuteSQL(sql_query)
 
@@ -287,8 +287,8 @@ network_list = []
 for item in range(len(u_lines)):
 	lc = u_lines[item]
 	nl = [n for (n,l) in nid_lid_list if l == lc]
-	if len(nl) > 0:		
-		nl = nl + [0]	
+	if len(nl) > 0:
+		nl = nl + [0]
 		pt_tup_list = []
 		sql_query = '''SELECT A.{0} AS nid,
 					ST_AsText(ST_ClosestPoint(B.geom,A.geom)) AS pt_geom,
@@ -296,9 +296,9 @@ for item in range(len(u_lines)):
 					ST_AsText(ST_StartPoint(B.geom)) as st_pt, ST_AsText(ST_EndPoint(B.geom)) as en_pt,
 					ST_Distance(ST_ClosestPoint(B.geom,A.geom),ST_StartPoint(B.geom)) as st_pt_dist,
 					ST_Distance(ST_ClosestPoint(B.geom,A.geom),ST_EndPoint(B.geom)) as en_pt_dist
-					FROM {1} AS A, 
-					{2} AS B 
-					WHERE A.{3} IN {4} 
+					FROM {1} AS A,
+					{2} AS B
+					WHERE A.{3} IN {4}
 					AND B.{5} = {6}
 					'''.format(node_id,node_layer,edge_layer,node_id,str(tuple(nl)),edge_id,lc)
 		read_layer = conn2.ExecuteSQL(sql_query)
@@ -349,7 +349,7 @@ for item in range(len(u_lines)):
 				# pt_info = (dummy_pt,'No name','No type','No code','No name',elr,'No code')
 				pt_id_sorted = pt_id_sorted + [dummy_pt]
 				pt_geom_sorted = pt_geom_sorted + [en_pt]
-	
+
 			for p in range(len(pt_frac_sorted)-1):
 				e_id = e_id + 1
 				eid = 'wateredge_' + str(e_id)
@@ -364,9 +364,9 @@ for item in range(len(u_lines)):
 				ntid = 'waternode_' + str(nt_id)
 
 				sql_insert = '''INSERT INTO public.wateredges
-							(edge_id,node_f_id,node_t_id,gid,geom) 
+							(edge_id,node_f_id,node_t_id,gid,geom)
 							VALUES ('{0}','{1}','{2}',{3},
-							ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5})) 
+							ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5}))
 							FROM {6} WHERE {7} = {8}),4326)
 							)'''.format(eid,nfid,ntid,lc,pt_st_frac,pt_en_frac,edge_layer,edge_id,lc)
 				create_layer = conn2.ExecuteSQL(sql_insert)
@@ -377,14 +377,14 @@ for item in range(len(u_lines)):
 				nid = 'waternode_' + str(n_id)
 				pt = pt_geom_sorted[p]
 				sql_insert = '''INSERT INTO public.waternodes
-							(node_id,gid,geom) 
+							(node_id,gid,geom)
 							VALUES ('{0}',{1},ST_GeomFromText('{2}',4326))
 							'''.format(nid,n_id,pt)
 				create_layer = conn2.ExecuteSQL(sql_insert)
 
 	else:
 		sql_query = '''SELECT ST_AsText(geom) AS l_geom,
-					ST_AsText(ST_StartPoint(geom)) as st_pt, 
+					ST_AsText(ST_StartPoint(geom)) as st_pt,
 					ST_AsText(ST_EndPoint(geom)) as en_pt
 					FROM {0}
 					WHERE gid = {1}
@@ -395,7 +395,7 @@ for item in range(len(u_lines)):
 			gt = f.GetField('l_geom')
 			st_pt = f.GetField('st_pt')
 			en_pt = f.GetField('en_pt')
-			
+
 			# edge_id = edge_id + 1
 			e_id += 1
 			# network_list.append((e_id,nf_id,nt_id,lc,gt))
@@ -405,27 +405,27 @@ for item in range(len(u_lines)):
 			dummy_pt = dummy_pt + 1
 			nf_id = dummy_pt
 			nfid = 'waternode_' + str(nf_id)
-			
+
 			dummy_pt = dummy_pt + 1
 			nt_id = dummy_pt
 			ntid = 'waternode_' + str(nt_id)
 
 			sql_insert = '''INSERT INTO public.wateredges
-						(edge_id,node_f_id,node_t_id,gid,geom) 
+						(edge_id,node_f_id,node_t_id,gid,geom)
 						VALUES ('{0}','{1}','{2}',{3},
 						ST_GeomFromText('{4}',4326))
 						'''.format(eid,nfid,ntid,lc,gt)
 			create_layer = conn2.ExecuteSQL(sql_insert)
 
 			sql_insert = '''INSERT INTO public.waternodes
-						(node_id,gid,geom) 
+						(node_id,gid,geom)
 						VALUES ('{0}',{1},
 						ST_GeomFromText('{2}',4326))
 						'''.format(nfid,nf_id,st_pt)
 			create_layer = conn2.ExecuteSQL(sql_insert)
 
 			sql_insert = '''INSERT INTO public.waternodes
-						(node_id,gid,geom) 
+						(node_id,gid,geom)
 						VALUES ('{0}',{1},
 						ST_GeomFromText('{2}',4326))
 						'''.format(ntid,nt_id,en_pt)
@@ -444,9 +444,9 @@ If two nodes are within 10m of each other, they are considered the same node
 '''
 
 node_s_pairs = []
-sql_query = '''SELECT A.node_id as a_n, B.node_id as b_n 
-			from waternodes as A, waternodes as B 
-			where ST_Distance(A.geom::geography,B.geom::geography) = 0 
+sql_query = '''SELECT A.node_id as a_n, B.node_id as b_n
+			from waternodes as A, waternodes as B
+			where ST_Distance(A.geom::geography,B.geom::geography) = 0
 			and A.node_id != B.node_id
 			'''
 read_layer = conn2.ExecuteSQL(sql_query)
@@ -485,7 +485,7 @@ while len(l)>0:
 			if len(first.intersection(set(r)))>0:
 				first |= set(r)
 			else:
-				rest2.append(r)     
+				rest2.append(r)
 		rest = rest2
 
 	out.append(first)
@@ -529,9 +529,9 @@ sql_query = '''SELECT A.node_id as a_n,
 			(SELECT B.edge_id from wateredges as B where B.edge_id NOT IN (SELECT edge_id FROM wateredges WHERE node_f_id = A.node_id)
 			and B.edge_id NOT IN (SELECT edge_id FROM wateredges WHERE node_t_id = A.node_id) order by st_distance(A.geom,B.geom) asc limit 1) as b_n,
 			(SELECT ST_Distance(A.geom,B.geom)from wateredges as B where B.edge_id NOT IN (SELECT edge_id FROM wateredges WHERE node_f_id = A.node_id)
-			and B.edge_id NOT IN (SELECT edge_id FROM wateredges WHERE node_t_id = A.node_id) order by st_distance(A.geom,B.geom) asc limit 1) as dist, A.geom 
+			and B.edge_id NOT IN (SELECT edge_id FROM wateredges WHERE node_t_id = A.node_id) order by st_distance(A.geom,B.geom) asc limit 1) as dist, A.geom
 			FROM waternodes as A
-			'''			
+			'''
 read_layer = conn2.ExecuteSQL(sql_query)
 f = read_layer.GetNextFeature()
 while f is not None:
@@ -551,16 +551,16 @@ for lc in cl_edges:
 	Find the nodes which have some edge matches
 	'''
 	nl = [n for (n,m) in nodes_edges if m == lc]
-	if len(nl) > 0:		
-		nl = nl + ['0']	
+	if len(nl) > 0:
+		nl = nl + ['0']
 		pt_tup_list = []
 		# print (nl,lc)
 		sql_query = '''SELECT A.node_id AS n,
 					ST_Line_Locate_Point(B.geom,ST_ClosestPoint(B.geom,A.geom)) as frac,
 					B.node_f_id as st_pt, B.node_t_id as en_pt, B.gid as elr
-					FROM public.waternodes AS A, 
-					public.wateredges AS B 
-					WHERE A.node_id IN {0} 
+					FROM public.waternodes AS A,
+					public.wateredges AS B
+					WHERE A.node_id IN {0}
 					AND B.edge_id = '{1}'
 					'''.format(str(tuple(nl)),lc)
 
@@ -596,7 +596,7 @@ for lc in cl_edges:
 			if max(pt_frac_sorted) < 1:
 				pt_frac_sorted = pt_frac_sorted + [1]
 				pt_id_sorted = pt_id_sorted + [en_pt]
-	
+
 			for p in range(len(pt_frac_sorted)-1):
 				e_id = e_id + 1
 				pt_st_frac = pt_frac_sorted[p]
@@ -608,15 +608,15 @@ for lc in cl_edges:
 				eid = 'wateredge_' + str(e_id)
 
 				sql_insert = '''INSERT INTO public.wateredges
-							(edge_id,node_f_id,node_t_id,gid,geom) 
+							(edge_id,node_f_id,node_t_id,gid,geom)
 							VALUES ('{0}','{1}','{2}',{3},
-							ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5})) 
+							ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5}))
 							FROM wateredges WHERE edge_id = '{6}'),4326)
 							)'''.format(eid,nf_id,nt_id,elr,pt_st_frac,pt_en_frac,lc)
 				create_layer = conn2.ExecuteSQL(sql_insert)
 
 
-		
+
 		sql_delete = '''DELETE FROM public.wateredges
 					WHERE edge_id = '{0}'
 					'''.format(lc)
@@ -647,21 +647,21 @@ node_attr = 'railwaylin'
 edge_attr = 'railwaylin'
 
 sql_query = '''DROP TABLE IF EXISTS
-			public.railway_edges_linegeom 
+			public.railway_edges_linegeom
 			'''
-sql_create = conn2.ExecuteSQL(sql_query) 
+sql_create = conn2.ExecuteSQL(sql_query)
 
-sql_query = '''CREATE TABLE public.railway_edges_linegeom 
+sql_query = '''CREATE TABLE public.railway_edges_linegeom
 			(
 			gid integer,
 			linename character varying(254),
-			geom geometry(LineString,4326) 
-			) 
+			geom geometry(LineString,4326)
+			)
 			'''
 sql_create = conn2.ExecuteSQL(sql_query)
 
 
-line_id_list = [] 
+line_id_list = []
 new_edge_id = 0
 sql_query = '''SELECT {0}, ST_AsText(geom) FROM {1}'''.format(edge_attr,edge_layer)
 cur.execute(sql_query)
@@ -676,7 +676,7 @@ for row in read_layer:
 
 		# line_create = ogr.Geometry(ogr.wkbLineString)
 		for j in range(0,len(g_x)):
-			line_create = ogr.Geometry(ogr.wkbLineString)	
+			line_create = ogr.Geometry(ogr.wkbLineString)
 			for i in range(0,len(g_x[j])):
 				pt_x = g_x[j][i]
 				pt_y = g_y[j][i]
@@ -703,13 +703,13 @@ edge_attr = 'linename'
 
 nid_lid_list = []
 
-sql_query = '''SELECT A.{0} as nid, 
-			(select B.{1} from {2} as B order by st_distance(A.geom,B.geom) asc limit 1) as lid,  
+sql_query = '''SELECT A.{0} as nid,
+			(select B.{1} from {2} as B order by st_distance(A.geom,B.geom) asc limit 1) as lid,
 			COALESCE((select B.{3} from {4} as B where A.{5} = B.{6} order by st_distance(A.geom,B.geom) asc limit 1),-9999) as sbid_lid,
 			(select ST_distance(A.geom,B.geom) from {7} as B order by st_distance(A.geom,B.geom) asc limit 1) as cl_dist,
-			COALESCE((select ST_distance(A.geom,B.geom) from {8} as B where A.{9} = B.{10} order by st_distance(A.geom,B.geom) asc limit 1),-9999) as sbid_dist  
+			COALESCE((select ST_distance(A.geom,B.geom) from {8} as B where A.{9} = B.{10} order by st_distance(A.geom,B.geom) asc limit 1),-9999) as sbid_dist
 			from {11} as A
-			'''.format(node_id,edge_id,edge_layer,edge_id,edge_layer,node_attr,edge_attr,edge_layer,edge_layer,node_attr,edge_attr,node_layer) 
+			'''.format(node_id,edge_id,edge_layer,edge_id,edge_layer,node_attr,edge_attr,edge_layer,edge_layer,node_attr,edge_attr,node_layer)
 read_layer = conn2.ExecuteSQL(sql_query)
 f = read_layer.GetNextFeature()
 while f is not None:
@@ -758,16 +758,16 @@ while f is not None:
 
 '''
 STEP 4:
-We will create the new edge and node layers 
+We will create the new edge and node layers
 '''
 '''
 create the edge layer
 '''
 
 sql_query = '''DROP TABLE IF EXISTS
-			public.railnetworkedges 
+			public.railnetworkedges
 			'''
-sql_create = conn2.ExecuteSQL(sql_query) 
+sql_create = conn2.ExecuteSQL(sql_query)
 
 sql_query = '''CREATE TABLE public.railnetworkedges
 			(
@@ -775,8 +775,8 @@ sql_query = '''CREATE TABLE public.railnetworkedges
 			node_f_id character varying(254),
 			node_t_id character varying(254),
 			gid integer,
-			geom geometry(LineString,4326) 
-			) 
+			geom geometry(LineString,4326)
+			)
 			'''
 sql_create = conn2.ExecuteSQL(sql_query)
 
@@ -784,24 +784,24 @@ sql_create = conn2.ExecuteSQL(sql_query)
 create the node layer
 '''
 sql_query = '''DROP TABLE IF EXISTS
-			public.railnetworknodes 
+			public.railnetworknodes
 			'''
-sql_create = conn2.ExecuteSQL(sql_query) 
+sql_create = conn2.ExecuteSQL(sql_query)
 
 sql_query = '''CREATE TABLE public.railnetworknodes
 			(
 			node_id character varying(254),
 			gid integer,
-			geom geometry(Point,4326) 
-			) 
+			geom geometry(Point,4326)
+			)
 			'''
 sql_create = conn2.ExecuteSQL(sql_query)
 
 
 '''
 STEP 4:
-Create the first iteration of the network nodes and egde sets 
-Based on the station points to rail line matches done in STEP 4 
+Create the first iteration of the network nodes and egde sets
+Based on the station points to rail line matches done in STEP 4
 '''
 
 u_lines = list(set(line_id_list))
@@ -816,8 +816,8 @@ for item in range(len(u_lines)):
 		Find the nodes which have some edge matches
 		'''
 		nl = [n for (n,m) in nlist if m == 1]
-		if len(nl) > 0:		
-			nl = nl + [0]	
+		if len(nl) > 0:
+			nl = nl + [0]
 			pt_tup_list = []
 			sql_query = '''SELECT A.{0} AS nid,
 						ST_AsText(ST_ClosestPoint(B.geom,A.geom)) AS pt_geom,
@@ -825,9 +825,9 @@ for item in range(len(u_lines)):
 						ST_AsText(ST_StartPoint(B.geom)) as st_pt, ST_AsText(ST_EndPoint(B.geom)) as en_pt,
 						ST_Distance(ST_ClosestPoint(B.geom,A.geom),ST_StartPoint(B.geom)) as st_pt_dist,
 						ST_Distance(ST_ClosestPoint(B.geom,A.geom),ST_EndPoint(B.geom)) as en_pt_dist
-						FROM {1} AS A, 
-						{2} AS B 
-						WHERE A.{3} IN {4} 
+						FROM {1} AS A,
+						{2} AS B
+						WHERE A.{3} IN {4}
 						AND B.{5} = {6}
 						'''.format(node_id,node_layer,edge_layer,node_id,str(tuple(nl)),edge_id,lc)
 			read_layer = conn2.ExecuteSQL(sql_query)
@@ -878,7 +878,7 @@ for item in range(len(u_lines)):
 					# pt_info = (dummy_pt,'No name','No type','No code','No name',elr,'No code')
 					pt_id_sorted = pt_id_sorted + [dummy_pt]
 					pt_geom_sorted = pt_geom_sorted + [en_pt]
-	
+
 				for p in range(len(pt_frac_sorted)-1):
 					e_id = e_id + 1
 					eid = 'railedge_' + str(e_id)
@@ -893,9 +893,9 @@ for item in range(len(u_lines)):
 					ntid = 'railnode_' + str(nt_id)
 
 					sql_insert = '''INSERT INTO public.railnetworkedges
-								(edge_id,node_f_id,node_t_id,gid,geom) 
+								(edge_id,node_f_id,node_t_id,gid,geom)
 								VALUES ('{0}','{1}','{2}',{3},
-								ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5})) 
+								ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5}))
 								FROM {6} WHERE {7} = {8}),4326)
 								)'''.format(eid,nfid,ntid,lc,pt_st_frac,pt_en_frac,edge_layer,edge_id,lc)
 					create_layer = conn2.ExecuteSQL(sql_insert)
@@ -918,25 +918,25 @@ for item in range(len(u_lines)):
 					nid = 'railnode_' + str(n_id)
 					pt = pt_geom_sorted[p]
 					sql_insert = '''INSERT INTO public.railnetworknodes
-								(node_id,gid,geom) 
+								(node_id,gid,geom)
 								VALUES ('{0}',{1},ST_GeomFromText('{2}',4326))
 								'''.format(nid,n_id,pt)
 					create_layer = conn2.ExecuteSQL(sql_insert)
-						
+
 	# 					# sql_insert = '''INSERT INTO public.railnetworknodes
-	# 					# 			(node_id,name,type,fo_code,fo_name,elr_code,stn_code,geom) 
+	# 					# 			(node_id,name,type,fo_code,fo_name,elr_code,stn_code,geom)
 	# 					# 			VALUES (%s,'%s','%s','%s','%s','%s','%s',
 	# 					# 			ST_GeomFromText('%s',27700))
 	# 					# 			'''%(n_id,n_a,t_y,f_c,f_n,e_l,s_t,pt)
 	# 					# create_layer = conn2.ExecuteSQL(sql_insert)
 	# 				else:
 	# 					sql_insert = '''INSERT INTO public.railnetworknodes
-	# 								(node_id,name,type,fo_code,fo_name,elr_code,stn_code,geom) 
+	# 								(node_id,name,type,fo_code,fo_name,elr_code,stn_code,geom)
 	# 								VALUES (%s,'No name','No type','No code','No name','%s','No code',
 	# 								ST_GeomFromText('%s',27700))
 	# 								'''%(n_id,elr,pt)
 	# 					create_layer = conn2.ExecuteSQL(sql_insert)
-		
+
 		'''
 		Find the nodes which have no edge matches
 		'''
@@ -944,28 +944,28 @@ for item in range(len(u_lines)):
 		# if len(nl) > 0:
 		# 	for n in nl:
 		# 		sql_insert = '''INSERT INTO public.railnetworknodes
-		# 					(node_id,name,type,fo_code,fo_name,elr_code,stn_code,geom) 
+		# 					(node_id,name,type,fo_code,fo_name,elr_code,stn_code,geom)
 		# 					VALUES (%s,
-		# 					(SELECT name 
+		# 					(SELECT name
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),
-		# 					(SELECT type 
+		# 					(SELECT type
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),
 		# 					(SELECT fo_code
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),
-		# 					(SELECT fo_name 
+		# 					(SELECT fo_name
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),
-		# 					(SELECT primary_el 
+		# 					(SELECT primary_el
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),
-		# 					(SELECT stn_code 
+		# 					(SELECT stn_code
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),
-		# 					ST_GeomFromText((SELECT ST_AsText(geom) 
+		# 					ST_GeomFromText((SELECT ST_AsText(geom)
 		# 					FROM public.stationspoint WHERE ogc_fid = %s),27700))
 		# 					'''%(n,n,n,n,n,n,n,n)
 		# 		create_layer = conn2.ExecuteSQL(sql_insert)
 
 	else:
 		sql_query = '''SELECT ST_AsText(geom) AS l_geom,
-					ST_AsText(ST_StartPoint(geom)) as st_pt, 
+					ST_AsText(ST_StartPoint(geom)) as st_pt,
 					ST_AsText(ST_EndPoint(geom)) as en_pt
 					FROM {0}
 					WHERE gid = {1}
@@ -989,21 +989,21 @@ for item in range(len(u_lines)):
 			ntid = 'railnode_' + str(nt_id)
 
 			sql_insert = '''INSERT INTO public.railnetworkedges
-						(edge_id,node_f_id,node_t_id,gid,geom) 
+						(edge_id,node_f_id,node_t_id,gid,geom)
 						VALUES ('{0}','{1}','{2}',{3},
 						ST_GeomFromText('{4}',4326))
 						'''.format(eid,nfid,ntid,lc,gt)
 			create_layer = conn2.ExecuteSQL(sql_insert)
 
 			sql_insert = '''INSERT INTO public.railnetworknodes
-						(node_id,gid,geom) 
+						(node_id,gid,geom)
 						VALUES ('{0}',{1},
 						ST_GeomFromText('{2}',4326))
 						'''.format(nfid,nf_id,st_pt)
 			create_layer = conn2.ExecuteSQL(sql_insert)
 
 			sql_insert = '''INSERT INTO public.railnetworknodes
-						(node_id,gid,geom) 
+						(node_id,gid,geom)
 						VALUES ('{0}',{1},
 						ST_GeomFromText('{2}',4326))
 						'''.format(ntid,nt_id,en_pt)
@@ -1024,9 +1024,9 @@ If two nodes are within 10m of each other, they are considered the same node
 '''
 
 node_s_pairs = []
-sql_query = '''SELECT A.node_id as a_n, B.node_id as b_n 
-			from railnetworknodes as A, railnetworknodes as B 
-			where ST_Distance(A.geom::geography,B.geom::geography) = 0 
+sql_query = '''SELECT A.node_id as a_n, B.node_id as b_n
+			from railnetworknodes as A, railnetworknodes as B
+			where ST_Distance(A.geom::geography,B.geom::geography) = 0
 			and A.node_id != B.node_id
 			'''
 read_layer = conn2.ExecuteSQL(sql_query)
@@ -1065,7 +1065,7 @@ while len(l)>0:
 			if len(first.intersection(set(r)))>0:
 				first |= set(r)
 			else:
-				rest2.append(r)     
+				rest2.append(r)
 		rest = rest2
 
 	out.append(first)
@@ -1109,9 +1109,9 @@ sql_query = '''SELECT A.node_id as a_n,
 			(SELECT B.edge_id from railnetworkedges as B where B.edge_id NOT IN (SELECT edge_id FROM railnetworkedges WHERE node_f_id = A.node_id)
 			and B.edge_id NOT IN (SELECT edge_id FROM railnetworkedges WHERE node_t_id = A.node_id) order by st_distance(A.geom,B.geom) asc limit 1) as b_n,
 			(SELECT ST_Distance(A.geom,B.geom)from railnetworkedges as B where B.edge_id NOT IN (SELECT edge_id FROM railnetworkedges WHERE node_f_id = A.node_id)
-			and B.edge_id NOT IN (SELECT edge_id FROM railnetworkedges WHERE node_t_id = A.node_id) order by st_distance(A.geom,B.geom) asc limit 1) as dist, A.geom 
+			and B.edge_id NOT IN (SELECT edge_id FROM railnetworkedges WHERE node_t_id = A.node_id) order by st_distance(A.geom,B.geom) asc limit 1) as dist, A.geom
 			FROM railnetworknodes as A
-			'''			
+			'''
 read_layer = conn2.ExecuteSQL(sql_query)
 f = read_layer.GetNextFeature()
 while f is not None:
@@ -1131,16 +1131,16 @@ for lc in cl_edges:
 	Find the nodes which have some edge matches
 	'''
 	nl = [n for (n,m) in nodes_edges if m == lc]
-	if len(nl) > 0:		
-		nl = nl + ['0']	
+	if len(nl) > 0:
+		nl = nl + ['0']
 		pt_tup_list = []
 		# print (nl,lc)
 		sql_query = '''SELECT A.node_id AS n,
 					ST_Line_Locate_Point(B.geom,ST_ClosestPoint(B.geom,A.geom)) as frac,
 					B.node_f_id as st_pt, B.node_t_id as en_pt, B.gid as elr
-					FROM public.railnetworknodes AS A, 
-					public.railnetworkedges AS B 
-					WHERE A.node_id IN {0} 
+					FROM public.railnetworknodes AS A,
+					public.railnetworkedges AS B
+					WHERE A.node_id IN {0}
 					AND B.edge_id = '{1}'
 					'''.format(str(tuple(nl)),lc)
 
@@ -1176,7 +1176,7 @@ for lc in cl_edges:
 			if max(pt_frac_sorted) < 1:
 				pt_frac_sorted = pt_frac_sorted + [1]
 				pt_id_sorted = pt_id_sorted + [en_pt]
-	
+
 			for p in range(len(pt_frac_sorted)-1):
 				e_id = e_id + 1
 				pt_st_frac = pt_frac_sorted[p]
@@ -1188,15 +1188,15 @@ for lc in cl_edges:
 				eid = 'railedge_' + str(e_id)
 
 				sql_insert = '''INSERT INTO public.railnetworkedges
-							(edge_id,node_f_id,node_t_id,gid,geom) 
+							(edge_id,node_f_id,node_t_id,gid,geom)
 							VALUES ('{0}','{1}','{2}',{3},
-							ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5})) 
+							ST_GeomFromText((SELECT ST_AsText(ST_Line_Substring(geom,{4},{5}))
 							FROM railnetworkedges WHERE edge_id = '{6}'),4326)
 							)'''.format(eid,nf_id,nt_id,elr,pt_st_frac,pt_en_frac,lc)
 				create_layer = conn2.ExecuteSQL(sql_insert)
 
 
-		
+
 		sql_delete = '''DELETE FROM public.railnetworkedges
 					WHERE edge_id = '{0}'
 					'''.format(lc)

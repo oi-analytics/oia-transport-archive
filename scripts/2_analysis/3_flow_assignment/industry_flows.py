@@ -30,9 +30,9 @@ from geoalchemy2 import Geometry, WKTElement
 
 import numpy as np
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import load_config
-from scripts.dbutils import *
+
+from vtra.utils import load_config
+from vtra.dbutils import *
 import scripts.transport_network_creation as tnc
 
 
@@ -83,7 +83,7 @@ od_data_modes['total'] = od_data_modes[mode_cols].sum(axis=1)
 for m in mode_cols:
 	od_data_modes[m] = od_data_modes[m]/od_data_modes['total'].replace(np.inf, 0)
 
-od_data_modes['water'] = od_data_modes['inland'] + od_data_modes['coastal']		
+od_data_modes['water'] = od_data_modes['inland'] + od_data_modes['coastal']
 od_data_modes = od_data_modes.fillna(0)
 # od_data_modes.to_csv('mode_frac.csv',index = False)
 
@@ -107,7 +107,7 @@ for ind in ind_cols:
 	# modes = ['road','rail','air','water']
 
 	modes = ['air','water','rail','road']
-	mode_id = 'node_id' 
+	mode_id = 'node_id'
 	od_id = 'od_id'
 	pop_id = 'population'
 	o_id_col = 'o'
@@ -151,7 +151,7 @@ for ind in ind_cols:
 		Get the OD flows
 		'''
 		net_dict = {'Origin_id':[],'Destination_id':[],'Origin_region':[],'Destination_region':[],'Tonnage':[],'edge_path':[],'node_path':[]}
-	
+
 		ofile = 'network_od_flows_' + ind + modes[m] + '.csv'
 		output_file = open(ofile,'w')
 		wr = csv.writer(output_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
@@ -159,7 +159,7 @@ for ind in ind_cols:
 
 		ind_mode = modes[m]+ '_' + ind
 		od_fracs[ind_mode] = od_fracs[modes[m]]*od_fracs[ind]
-			
+
 
 		od_flows = list(zip(od_fracs[o_id_col].values.tolist(),od_fracs[d_id_col].values.tolist(),od_fracs[ind_mode].values.tolist()))
 		origins = list(set(od_fracs[o_id_col].values.tolist()))
@@ -196,7 +196,7 @@ for ind in ind_cols:
 													'Tonnage':od_val,'edge_path':e_list,'node_path':[o_node,d_node]}
 										wr.writerow(net_dict.values())
 										dflows.append((str([o_node,d_node]),str(e_list),od_val))
-									
+
 
 				print (o,d,fval,modes[m],ind)
 

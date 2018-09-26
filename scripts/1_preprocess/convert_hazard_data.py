@@ -10,8 +10,8 @@ import subprocess
 import json
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import load_config
+
+from vtra.utils import load_config
 
 import fiona
 import fiona.crs
@@ -49,7 +49,7 @@ def raster_rewrite(in_raster,out_raster,nodata):
 	with rasterio.open(in_raster) as dataset:
 		data_array = dataset.read()
 		data_array[np.where(np.isnan(data_array))] = nodata
-	
+
 		with rasterio.open(out_raster, 'w', driver='GTIff',
 					height=data_array.shape[1],    # numpy of rows
 					width=data_array.shape[2],     # number of columns
@@ -210,7 +210,7 @@ def main():
 	f_all = []
 	for root, dirs, files in os.walk(root_dir):
 		for file in files:
-			if file.endswith(".tif") or file.endswith(".tiff"):		
+			if file.endswith(".tif") or file.endswith(".tiff"):
 				band_nums, crs, unique_data_values = raster_projections_and_databands(os.path.join(root, file))
 				print (file,crs, unique_data_values)
 				if 'epsg' in crs:
@@ -273,4 +273,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-

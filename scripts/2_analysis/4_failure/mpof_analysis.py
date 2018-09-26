@@ -16,12 +16,12 @@ import operator
 import ast
 from sqlalchemy import create_engine
 import numpy as np
-import igraph as ig 
+import igraph as ig
 import copy
 from collections import Counter
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from scripts.utils import load_config
+
+from vtra.utils import load_config
 import scripts.transport_network_creation as tnc
 
 
@@ -139,9 +139,9 @@ def igraph_scenario_complete_failure(network_dictionary,edge_failure_set,path_in
 	edge_fail_dictionary = Counter({})
 	network_graph = tnc.create_igraph_topology(network_dictionary)
 	edge_path_index = []
-	for edge in edge_failure_set: 
+	for edge in edge_failure_set:
 		edge_index = network_dictionary['edge'].index(edge)
-	
+
 		fr_nd = network_dictionary['from_node'][edge_index]
 		t_nd = network_dictionary['to_node'][edge_index]
 		fr_id = [x for x in network_graph.vs if x['node'] == fr_nd]
@@ -189,7 +189,7 @@ def add_columns_to_table(table_name, table_match, col_list, col_id, cursor, conn
 		# connection.commit()
 
 		sql_query = '''
-					update %s set %s = (select %s from %s as A where %s.%s = A.%s) 
+					update %s set %s = (select %s from %s as A where %s.%s = A.%s)
 					'''%(table_name,col,col,table_match,table_name,col_id,col_id)
 		cursor.execute(sql_query)
 		connection.commit()
@@ -214,7 +214,7 @@ def merge_tables(table_name, table_A,table_B,col_A,col_B,id_A,id_B,cursor, conne
 	connection.commit()
 
 def network_od_disruption(path_index,path_list,node_path_list, net,edge,edge_fail_dict,edge_fail_dict_big):
-	
+
 	edge_fail_dict.update({str(edge):{'path_index':[],'old_dist':[],'new_dist':[],'incr_fact':[]}})
 	path_fail_index = [item for item in range(len(path_list)) if edge in path_list[item]]
 	if len(path_fail_index) >= 3000 and len(path_fail_index) < 5000:
@@ -249,7 +249,7 @@ def parse_values_string_list(string_list):
 	The list is in the form of '[val1,val2,....'
 	'''
 	if string_list[-1] != ']':
-		last_comma_find = string_list.rfind(',') 
+		last_comma_find = string_list.rfind(',')
 		string_list = string_list[:last_comma_find] + ']'
 
 	value_list = ast.literal_eval(string_list)
@@ -279,7 +279,7 @@ def create_spof_info_list(all_edge_dict,file_name,sheet_name,id_col,edge_central
 		elif edge_centrality == 0 and len(index_paths) == 0:
 			all_edge_dict.update({str(edge):{'centrality':0,'path_index':[],'old_dist':[],'new_dist':[],'incr_fact':[]}})
 
-	return(all_edge_dict)		
+	return(all_edge_dict)
 
 
 
@@ -455,7 +455,7 @@ Process results
 # df = pd.read_excel('tz_path_flows.xlsx',sheet_name = 'path_flows')
 # cols = df.columns.values.tolist()
 # industry_names = cols[3:]
-# # print (industry_names) 
+# # print (industry_names)
 # for idx, r in df.iterrows():
 # 	pth_flow = []
 # 	pth_flow.append(r[0])
@@ -505,7 +505,7 @@ Process results
 
 # 	e_tuple = [e_id,e_cntr,ton_km,low_day_trpt_loss,high_day_trpt_loss] + list(ind_flow_vals)
 # 	all_e_tuple.append(e_tuple)
-	
+
 
 # road_list = [e for e in all_e_tuple if str(e[0]).isdigit()]
 # rail_list = [e for e in all_e_tuple if 'rail' in str(e[0])]

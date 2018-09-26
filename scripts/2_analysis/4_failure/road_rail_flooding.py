@@ -19,8 +19,8 @@ import itertools
 import copy
 import matplotlib.pyplot as plt
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from scripts.utils import load_config
+
+from vtra.utils import load_config
 
 def add_column_to_table(table_name, table_match, col_name, col_id, cursor, connection):
 	sql_query = "alter table %s add column %s double precision"%(table_name,col_name)
@@ -29,7 +29,7 @@ def add_column_to_table(table_name, table_match, col_name, col_id, cursor, conne
 
 
 	sql_query = '''
-				update %s set %s = (select %s from %s as A where %s.%s = A.%s) 
+				update %s set %s = (select %s from %s as A where %s.%s = A.%s)
 				'''%(table_name,col_name,col_name,table_match,table_name,col_id,col_id)
 	cursor.execute(sql_query)
 	connection.commit()
@@ -48,11 +48,11 @@ def add_column_value_to_table(table_name, col_name, col_id,col_id_val_list, curs
 		c_val = id_val[1]
 		if type(c_id) is str:
 			sql_query = '''
-						update %s set %s = %s where %s = '%s' 
+						update %s set %s = %s where %s = '%s'
 						'''%(table_name,col_name,c_val,col_id,c_id)
 		else:
 			sql_query = '''
-						update %s set %s = %s where %s = %s 
+						update %s set %s = %s where %s = %s
 						'''%(table_name,col_name,c_val,col_id,c_id)
 
 		cursor.execute(sql_query)
@@ -80,8 +80,8 @@ def get_total_edges(sector_region_list):
 
 def get_flood_results(flood_list,element_type,sector_type,model_include,flood_depth_min,flood_depth_max,flood_return_period,sector_list,sector_region_list):
 	flood_percentage_list = []
-	all_flood_edges = [fr.id for fr in flood_list if fr.network_element == element_type 
-					and fr.sector == sector_type and fr.model in model_include and fr.flood_depth >= flood_depth_min 
+	all_flood_edges = [fr.id for fr in flood_list if fr.network_element == element_type
+					and fr.sector == sector_type and fr.model in model_include and fr.flood_depth >= flood_depth_min
 					and fr.flood_depth < flood_depth_max and fr.return_period == flood_return_period]
 	all_flood_edges = list(set(all_flood_edges))
 	# print (all_flood_edges)
@@ -118,14 +118,14 @@ def get_flood_results(flood_list,element_type,sector_type,model_include,flood_de
 
 		# flood_percentage_list.append((region,percent_flood))
 		flood_percentage_list.append((region,flooded_edges))
-		
+
 
 	return flood_percentage_list
 
 def get_flood_id_depth(flood_list,element_type,sector_type,model_include,flood_depth_threshold_min,flood_depth_threshold_max,flood_return_period,sector_list,sector_region_list):
 	sector_region_dict = {}
-	all_flood_edges = [(fr.id,fr.flood_depth) for fr in flood_list if fr.network_element == element_type 
-					and fr.sector == sector_type and fr.model in model_include and fr.flood_depth >= flood_depth_threshold_min 
+	all_flood_edges = [(fr.id,fr.flood_depth) for fr in flood_list if fr.network_element == element_type
+					and fr.sector == sector_type and fr.model in model_include and fr.flood_depth >= flood_depth_threshold_min
 					and fr.flood_depth < flood_depth_threshold_max and fr.return_period == flood_return_period]
 	all_flood_edges = list(set(all_flood_edges))
 	# print (all_flood_edges)
@@ -158,7 +158,7 @@ def get_flood_id_depth(flood_list,element_type,sector_type,model_include,flood_d
 					fattr = [sid,fattr_max]
 				sector_region_dict[region]['flood_edge'].append(fattr)
 
-		
+
 	return sector_region_dict
 
 curdir = os.getcwd()

@@ -30,9 +30,9 @@ from geoalchemy2 import Geometry, WKTElement
 
 import numpy as np
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import load_config
-from scripts.dbutils import *
+
+from vtra.utils import load_config
+from vtra.dbutils import *
 import scripts.transport_network_creation as tnc
 
 
@@ -94,7 +94,7 @@ od_data_modes['total'] = od_data_modes[mode_cols].sum(axis=1)
 for m in mode_cols:
 	od_data_modes[m] = od_data_modes[m]/od_data_modes['total'].replace(np.inf, 0)
 
-od_data_modes['water'] = od_data_modes['inland'] + od_data_modes['coastal']		
+od_data_modes['water'] = od_data_modes['inland'] + od_data_modes['coastal']
 od_data_modes = od_data_modes.fillna(0)
 # od_data_modes.to_csv('mode_frac.csv',index = False)
 
@@ -123,7 +123,7 @@ for file in os.listdir(crop_data_path):
 		'''Clip to region and convert to points'''
 		os.system('gdal2xyz.py -csv '+raster_in+' '+ outCSVName)
 
-		'''Load points and convert to geodataframe with coordinates'''    
+		'''Load points and convert to geodataframe with coordinates'''
 		load_points = pd.read_csv(outCSVName,header=None,names=['x','y','crop_prod'],index_col=None)
 		load_points = load_points[load_points['crop_prod'] > 0]
 		# load_points.to_csv('crop_concentrations.csv', index = False)
@@ -190,7 +190,7 @@ for file in os.listdir(crop_data_path):
 		crop_id = 'gid'
 		mode_crop_m = 'od_id'
 		crop_mode_m = 'od_id'
-		crop_prod = 'crop_prod' 
+		crop_prod = 'crop_prod'
 		od_id = 'od_id'
 		od_id_type = 'integer'
 		o_id_col = 'o'
@@ -242,7 +242,7 @@ for file in os.listdir(crop_data_path):
 			Get the OD flows
 			'''
 			net_dict = {'Origin_id':[],'Destination_id':[],'Origin_region':[],'Destination_region':[],'Tonnage':[],'edge_path':[],'node_path':[]}
-	
+
 			ofile = 'network_od_flows_' + crop_name + modes[m] + '.csv'
 			output_file = open(ofile,'w')
 			wr = csv.writer(output_file, delimiter=',', quoting=csv.QUOTE_MINIMAL)
@@ -289,7 +289,7 @@ for file in os.listdir(crop_data_path):
 														'Tonnage':od_val,'edge_path':e_list,'node_path':[o_node,d_node]}
 											wr.writerow(net_dict.values())
 											dflows.append((str([o_node,d_node]),str(e_list),od_val))
-									
+
 
 					print (o,d,fval,modes[m],crop_name)
 

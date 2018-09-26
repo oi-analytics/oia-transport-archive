@@ -16,15 +16,15 @@ import operator
 import ast
 from sqlalchemy import create_engine
 import numpy as np
-import igraph as ig 
+import igraph as ig
 import copy
 from collections import Counter
 import sys
 import math
-import copy 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from scripts.utils import load_config
-from scripts.transport_network_creation import province_shapefile_to_network, add_igraph_generalised_costs_province_roads, province_shapefile_to_dataframe
+import copy
+
+from vtra.utils import load_config
+from vtra.transport_network_creation import province_shapefile_to_network, add_igraph_generalised_costs_province_roads, province_shapefile_to_dataframe
 
 def igraph_scenario_edge_failures_changing_tonnages(network_df_in,edge_failure_set,flow_dataframe,vehicle_wt,path_criteria,rev_criteria,tons_criteria,cost_criteria,distance_criteria,time_criteria):
 	network_graph_df = copy.deepcopy(network_df_in)
@@ -32,7 +32,7 @@ def igraph_scenario_edge_failures_changing_tonnages(network_df_in,edge_failure_s
 	edge_path_index = []
 	for edge in edge_failure_set:
 		network_graph_df = network_graph_df[network_graph_df.edge_id != edge]
-		edge_path_index += flow_dataframe.loc[flow_dataframe[path_criteria].str.contains(edge)].index.tolist() 
+		edge_path_index += flow_dataframe.loc[flow_dataframe[path_criteria].str.contains(edge)].index.tolist()
 
 
 	edge_path_index = list(set(edge_path_index))
@@ -76,7 +76,7 @@ def igraph_scenario_edge_failures_changing_tonnages(network_df_in,edge_failure_s
 						new_dist += network_graph.es[n]['length']
 						new_time += network_graph.es[n][time_criteria]
 						new_travel_cost += network_graph.es[n][cost_criteria]
-					
+
 					edge_fail_dictionary.append({'edge_id':edge,'econ_value':flow_dataframe.iloc[e][rev_criteria],'tons':flow_dataframe.iloc[e][tons_criteria],
 										'old_distance':flow_dataframe.iloc[e][distance_criteria],'old_time':flow_dataframe.iloc[e][time_criteria],
 										'econ_loss':new_travel_cost - flow_dataframe.iloc[e][cost_criteria],'new_distance':new_dist,'new_time':new_time,'no_access': False})
@@ -87,7 +87,7 @@ def igraph_scenario_edge_failures_changing_tonnages(network_df_in,edge_failure_s
 def network_od_path_estimations(graph,source,target,cost_criteria,time_criteria):
 	# compute min cost paths and values
 	paths = graph.get_shortest_paths(source,target,weights=cost_criteria,output="epath")
-	
+
 	edge_path_list = []
 	path_dist_list = []
 	path_time_list = []
@@ -120,11 +120,11 @@ def igraph_scenario_edge_failures(network_df_in,edge_failure_set,flow_dataframe,
 	# if len(edge_failure_set) == 1:
 	# 	edge_failure_set = edge_failure_set[0]
 	# 	network_graph_df = network_graph_df[network_graph_df.edge_id != edge_failure_set]
-	# 	edge_path_index += flow_dataframe.loc[flow_dataframe[path_criteria].str.contains("'{}'".format(edge_failure_set))].index.tolist() 
+	# 	edge_path_index += flow_dataframe.loc[flow_dataframe[path_criteria].str.contains("'{}'".format(edge_failure_set))].index.tolist()
 	# else:
 	# 	for efail in edge_failure_set:
 	# 		network_graph_df = network_graph_df[network_graph_df.edge_id != efail]
-	# 		edge_path_index += flow_dataframe.loc[flow_dataframe[path_criteria].str.contains("'{}'".format(efail))].index.tolist() 
+	# 		edge_path_index += flow_dataframe.loc[flow_dataframe[path_criteria].str.contains("'{}'".format(efail))].index.tolist()
 
 	for efail in edge_failure_set:
 		network_graph_df = network_graph_df[network_graph_df.edge_id != efail]
@@ -186,7 +186,7 @@ def igraph_scenario_edge_failures(network_df_in,edge_failure_set,flow_dataframe,
 						fail_dict = {'edge_id':str(edge_failure_set),'econ_value':rev,'tons':croptons,'vehicle_nums':veh_nums,
 									'old_distance':dist,'old_time':time,'old_cost':gcost,
 									'new_distance':new_dist,'new_time':new_time,'new_cost':new_gcost,'no_access': 0}
-						
+
 						edge_fail_dictionary.append(fail_dict)
 					else:
 						fail_dict = {'edge_id':str(edge_failure_set),'econ_value':rev,'tons':croptons,'vehicle_nums':veh_nums,
@@ -204,7 +204,7 @@ def igraph_scenario_edge_failures(network_df_in,edge_failure_set,flow_dataframe,
 					dist = po_access.loc[origin,distance_criteria].values.tolist()
 					time = po_access.loc[origin,time_criteria].values.tolist()
 					gcost = po_access.loc[origin,cost_criteria].values.tolist()
-				
+
 					# compute min cost paths and values
 					paths = network_graph.get_shortest_paths(origin,destinations,weights=cost_criteria,output="epath")
 					for p in range(len(paths)):
@@ -235,7 +235,7 @@ def main():
 	data_path,calc_path,output_path = load_config()['paths']['data'],load_config()['paths']['calc'],load_config()['paths']['output']
 
 	truck_unit_wt = [5.0,20.0]
-	# provinces to consider 
+	# provinces to consider
 	province_list = ['Lao Cai','Binh Dinh','Thanh Hoa']
 	province_terrian = ['mountain','flat','flat']
 
@@ -273,11 +273,11 @@ def main():
 		edges_in = os.path.join(data_path,'Roads','{}_roads'.format(province_name),'vietbando_{}_edges.shp'.format(province_name))
 		# G = province_shapefile_to_network(edges_in,province_terrian[prn],rd_prop_file)
 		G_df = province_shapefile_to_dataframe(edges_in,province_terrian[prn],rd_prop_file)
-		
+
 		fail_df = pd.read_excel(fail_scenarios_data,sheet_name = province_name)
 		fail_df = fail_df.set_index(selection_criteria)
 		criteria_set = list(set(fail_df.index.values.tolist()))
-		
+
 		multiple_ef_list = []
 		for criteria in criteria_set:
 			if len(fail_df.loc[criteria,'edge_id'].index) == 1:
@@ -312,7 +312,7 @@ def main():
 						ef_sc_list += [{**ef,**edge_fail[1]} for ef in ef_list if ef['edge_id'] == str(edge_fail[0])]
 
 
-			
+
 					print ('Done with province {0} edge {1} type {2}'.format(province_name,edge_fail[1],types[t]))
 
 				df = pd.DataFrame(ef_sc_list)
@@ -329,8 +329,8 @@ def main():
 			egde_impact = pd.merge(egde_impact,edge_fail_ranges[1],how='left', on=filter_cols)
 			df_path = os.path.join(output_path,'failure_results','multiple_edge_failures_totals_{0}_{1}_tons.csv'.format(province_name,int(tr_wt)))
 			egde_impact.to_csv(df_path,index = False)
-		
-			
+
+
 
 if __name__ == "__main__":
 	main()

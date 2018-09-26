@@ -16,8 +16,8 @@ from shapely.geometry import Polygon
 import rasterio
 from openpyxl import load_workbook
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import *
+
+from vtra.utils import *
 
 def main():
 	data_path = load_config()['paths']['data']
@@ -30,9 +30,9 @@ def main():
 	book = load_workbook(hazard_description_file)
 	excel_writer = pd.ExcelWriter(hazard_description_file,engine = 'openpyxl')
 	excel_writer.book = book
-	
+
 	hazard_df['grid_x'] = 0
-	hazard_df['grid_y'] = 0		
+	hazard_df['grid_y'] = 0
 	hazard_dir = os.path.join(data_path,'Hazard_data')
 	for root, dirs, files in os.walk(hazard_dir):
 		for file in files:
@@ -48,13 +48,10 @@ def main():
 					hazard_df.loc[hazard_df['file_name'] == hazard_file,'grid_y'] = py
 
 
-	
-	hazard_df.to_excel(excel_writer,'file_contents_2',index = False)		
+
+	hazard_df.to_excel(excel_writer,'file_contents_2',index = False)
 	excel_writer.save()
-						
+
 
 if __name__ == "__main__":
 	main()
-
-
-

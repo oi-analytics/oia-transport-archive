@@ -19,10 +19,10 @@ import operator
 import ast
 import math
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 
-from scripts.utils import *
-from scripts.transport_network_creation import *
+
+from vtra.utils import *
+from vtra.transport_network_creation import *
 
 def swap_min_max(x,min_col,max_col):
 	'''
@@ -35,7 +35,7 @@ def swap_min_max(x,min_col,max_col):
 def network_od_path_estimations(graph,source,target,cost_criteria,time_criteria):
 	# compute min cost paths and values
 	paths = graph.get_shortest_paths(source,target,weights=cost_criteria,output="epath")
-	
+
 	edge_path_list = []
 	path_dist_list = []
 	path_time_list = []
@@ -64,17 +64,17 @@ def network_od_path_estimations(graph,source,target,cost_criteria,time_criteria)
 def network_od_paths_assembly(points_dataframe,node_dict,graph,vehicle_wt,transport_mode,industry_columns,save_edges = True,output_path ='',excel_writer =''):
 	"""
 	Assign net revenue to roads assets in Vietnam
-		
+
 	Inputs are:
 	start_points - GeoDataFrame of start points for shortest path analysis.
 	end_points - GeoDataFrame of potential end points for shorest path analysis.
 	G - iGraph network of the province.
-	save_edges - 
-		
+	save_edges -
+
 	Outputs are:
 	Shapefile with all edges and the total net reveneu transferred along each edge
 	GeoDataFrame of total net revenue transferred along each edge
-	"""				
+	"""
 	save_paths = []
 	points_dataframe = points_dataframe.set_index('origin')
 	# print (points_dataframe)
@@ -150,7 +150,7 @@ def network_od_paths_assembly(points_dataframe,node_dict,graph,vehicle_wt,transp
 
 	points_dataframe = points_dataframe.reset_index()
 	save_paths_df = pd.merge(save_paths_df,points_dataframe,how='left', on=['origin','destination']).fillna(0)
-	
+
 	save_paths_df = save_paths_df[(save_paths_df['max_tons'] > 0) & (save_paths_df['origin'] != 0)]
 	if transport_mode != 'air':
 		save_paths_df['min_vehicle_nums'] = np.maximum(1,np.ceil(save_paths_df['min_tons']/vehicle_wt))
@@ -164,10 +164,10 @@ def network_od_paths_assembly(points_dataframe,node_dict,graph,vehicle_wt,transp
 
 	all_edges = [x['edge_id'] for x in graph.es]
 	all_edges_geom = [x['geometry'] for x in graph.es]
-	
+
 	gdf_edges = gpd.GeoDataFrame(pd.DataFrame([all_edges,all_edges_geom]).T,crs='epsg:4326')
 	gdf_edges.columns = ['edge_id','geometry']
-	
+
 	min_ind_cols = []
 	max_ind_cols = []
 	ch_min_ind_cols = []
@@ -195,10 +195,10 @@ def network_od_paths_assembly(points_dataframe,node_dict,graph,vehicle_wt,transp
 	for iter_,path in save_paths_df.iterrows():
 		min_path = path['min_edge_path']
 		max_path = path['max_edge_path']
-		
+
 		gdf_edges.loc[gdf_edges['edge_id'].isin(min_path),min_ind_cols] += path[ch_min_ind_cols].values
 		gdf_edges.loc[gdf_edges['edge_id'].isin(max_path),max_ind_cols] += path[ch_max_ind_cols].values
-	
+
 	# gdf_edges[min_ind_cols] = gdf_edges['min_vals'].apply(pd.Series)
 	# gdf_edges[max_ind_cols] = gdf_edges['max_vals'].apply(pd.Series)
 	# gdf_edges.drop('min_vals',axis=1,inplace=True)
@@ -246,8 +246,8 @@ def main():
 					edges_in = os.path.join(mode_data_path, file)
 			except:
 				return ('Network nodes and edge files necessary')
-			
-		if modes[m] == 'road': 
+
+		if modes[m] == 'road':
 			G =  national_road_shapefile_to_dataframe(edges_in,rd_prop_file)
 		else:
 			G =  network_shapefile_to_dataframe(edges_in,md_prop_file,modes[m],speeds[m][0],speeds[m][1])
@@ -264,12 +264,12 @@ def main():
 		all_ods = pd.read_excel(od_output_excel,sheet_name = modes[m])
 		all_ods = all_ods[all_ods['max_tons'] > 0.5]
 		print (len(all_ods.index))
-		# if mode[m] != 'air' 
+		# if mode[m] != 'air'
 		# 	all_ods['min_vehicle_nums'] = np.maximum(1,np.ceil(all_ods['min_tons']/vehicle_wt))
 		# 	all_ods['max_vehicle_nums'] = np.maximum(1,np.ceil(all_ods['max_tons']/vehicle_wt))
 			# all_ods = all_ods[['origin','destination','min_croptons','max_croptons','min_netrev','max_netrev']]
 		network_od_paths_assembly(all_ods,node_dict,G,veh_wt[m],modes[m],ind_cols,save_edges = True,output_path =shp_output_path,excel_writer =excl_wrtr)
-			
+
 
 if __name__ == '__main__':
 	main()

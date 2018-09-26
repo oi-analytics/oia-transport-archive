@@ -6,8 +6,8 @@ Date: June 25, 2018
 import os
 import sys
 import network_create as nc
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import *
+
+from vtra.utils import *
 
 def check_single_linegeom_creation(line_table,line_id,line_geom_type,line_attr,line_attr_typ):
 	if line_geom_type == 'multilinestring':
@@ -106,9 +106,9 @@ def main():
 			input_path = os.path.join(config['paths']['data'],'infrastructure_preprocessed_data',sect,subsect)
 			pt_table, ln_table, pt_gm_typ, ln_gm_typ = nc.write_shapefiles_to_database(input_path,sub_enc[s][sb_list])
 			print (pt_table, ln_table, pt_gm_typ, ln_gm_typ)
-			# pt_table = '' 
-			# ln_table = 'national_network_edges_v1' 
-			# pt_gm_typ= '' 
+			# pt_table = ''
+			# ln_table = 'national_network_edges_v1'
+			# pt_gm_typ= ''
 			# ln_gm_typ = 'multilinestring'
 			nd_table, edg_table = nc.create_node_edge_tables_from_point_line_tables(pt_table,ln_table)
 			if pt_table:
@@ -122,7 +122,7 @@ def main():
 				# print (list(set([p[1] for p in pt_ln_list])))
 				print ("Done with matching points and lines")
 				# print (pt_table,sln_table,pt_id,ln_id,sln_id,pt_gm,ln_gm,pt_ln_list,sector_ids[s],dst_thr,nd_table,edg_table)
-				nc.insert_to_node_edge_tables_from_given_points_lines(pt_table,sln_table,pt_id,ln_id,sln_id,pt_gm,ln_gm,pt_ln_list,sector_ids[s],dst_thr,nd_table,edg_table)	
+				nc.insert_to_node_edge_tables_from_given_points_lines(pt_table,sln_table,pt_id,ln_id,sln_id,pt_gm,ln_gm,pt_ln_list,sector_ids[s],dst_thr,nd_table,edg_table)
 				print ("Done with inserting nodes and edges")
 				nc.eliminate_common_nodes_from_network(nd_table,edg_table,nd_id,nd_gm,nd_prox)
 				print ("Done with eliminating common nodes")
@@ -143,7 +143,7 @@ def main():
 				print ("Done with line bisection by nodes")
 				nc.add_all_columns_from_one_table_to_another(ln_table,edg_table,ln_id,skip_ids)
 				print ("Done with adding columns")
-					
+
 			output_path = os.path.join(config['paths']['data'],'infrastructure_processed_data',sect,subsect)
 			nc.export_pgsql_to_shapefiles(output_path,nd_table)
 			nc.export_pgsql_to_shapefiles(output_path,edg_table)
@@ -151,4 +151,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

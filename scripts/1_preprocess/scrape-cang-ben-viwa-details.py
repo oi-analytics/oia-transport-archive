@@ -7,8 +7,8 @@ import json
 
 import requests
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from scripts.utils import load_config
+
+from vtra.utils import load_config
 
 def main(input_file, output_dir):
 	with open(input_file, 'r') as fh:
@@ -20,7 +20,7 @@ def main(input_file, output_dir):
 		output_path = os.path.join(output_dir, 'cangben-{}.html'.format(port_id))
 		if not os.path.exists(output_path):
 			print(port_id)
-			try:	
+			try:
 				r = requests.get(
 					'http://hatang.viwa.gov.vn/BanDo/_ChiTietCangBen',
 					params={

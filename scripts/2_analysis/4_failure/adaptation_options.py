@@ -14,29 +14,29 @@ import operator
 import ast
 from sqlalchemy import create_engine
 import numpy as np
-import igraph as ig 
+import igraph as ig
 import copy
 from collections import Counter
 import sys
 import math
-import copy 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from scripts.utils import *
-from scripts.transport_network_creation import *
+import copy
+
+from vtra.utils import *
+from vtra.transport_network_creation import *
 
 
 def net_present_value(adaptation_options_dataframe,strategy_parameter,parameter_value_list,min_eal,max_eal,edge_options_dictionary,edge_width = 1.0, edge_length = 1.0):
 	for param_val in parameter_value_list:
-		
+
 		st = adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'strategy'].values[0]
-		
+
 		st_min_benefit = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_benefit'].sum() + min_eal
 		st_max_benefit = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_benefit'].sum() + max_eal
 
 		st_min_cost = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'min_cost'].sum()
 		st_max_cost = edge_width*edge_length*adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_cost'].sum()
-		
-		min_npv = st_min_benefit - st_max_cost 
+
+		min_npv = st_min_benefit - st_max_cost
 		max_npv = st_max_benefit - st_min_cost
 
 		if adaptation_options_dataframe.loc[adaptation_options_dataframe[strategy_parameter] == param_val,'max_cost'].sum() > 0:
@@ -111,7 +111,7 @@ def main():
 
 	adaptation_df['min_cost'] = adaptation_df['adapt_cost_min']*adaptation_df['total_discount_ratio'] + adaptation_df['maintain_cost_min']*adaptation_df['min_maintain_discount_ratio']
 	adaptation_df['max_cost'] = adaptation_df['adapt_cost_max']*adaptation_df['total_discount_ratio'] + adaptation_df['maintain_cost_max']*adaptation_df['max_maintain_discount_ratio']
-	
+
 	print (adaptation_df)
 
 	'''
@@ -130,7 +130,7 @@ def main():
 
 	st_min_benefit = adaptation_df.loc[adaptation_df['asset_cond'] == 'unpaved','rehab_cost_min'].sum()*total_discount_ratio[0] + adaptation_df.loc[adaptation_df['asset_cond'] == 'paved','rehab_cost_min'].sum()*sum(total_discount_ratio[1:])
 	st_max_benefit = adaptation_df.loc[adaptation_df['asset_cond'] == 'unpaved','rehab_cost_max'].sum()*total_discount_ratio[0] + adaptation_df.loc[adaptation_df['asset_cond'] == 'paved','rehab_cost_max'].sum()*sum(total_discount_ratio[1:])
-	
+
 	ad_opt.append(st_desc + [st_min_cost,st_max_cost,st_min_benefit,st_max_benefit])
 	new_ht = 6
 	st_desc = ['dyke building','dyke','rural','sea',new_ht,'million USD/km']
@@ -153,7 +153,7 @@ def main():
 
 	index_cols = ['edge_id','hazard_type','model','climate_scenario','year','road_cond','asset_type','width','road_length']
 
-	# provinces to consider 
+	# provinces to consider
 	province_list = ['Lao Cai','Binh Dinh','Thanh Hoa']
 	province_terrian = ['mountain','flat','flat']
 	growth_scenarios = [(5,'low'),(6.5,'forecast'),(10,'high')]
@@ -178,7 +178,7 @@ def main():
 		all_edge_fail_scenarios.rename(columns={'length': 'exposure_length'}, inplace=True)
 		all_edge_fail_scenarios = all_edge_fail_scenarios[cols]
 		all_edge_fail_scenarios = all_edge_fail_scenarios.drop_duplicates(subset=cols, keep=False)
-				
+
 
 		all_edges = list(set(all_edge_fail_scenarios['edge_id'].values.tolist()))
 		all_edge_fail_scenarios['road_cond'] = 'unknown'
@@ -190,7 +190,7 @@ def main():
 		edges = province_shapefile_to_dataframe(edges_in,province_terrian[prn],rd_prop_file)
 		edge_attr = list(zip(edges['edge_id'].values.tolist(),edges['road_cond'].values.tolist(),edges['asset_type'].values.tolist(),edges['width'].values.tolist(),edges['length'].values.tolist()))
 		# print (edge_attr)
-		
+
 		edge_attr = [e for e in edge_attr if e[0] in all_edges]
 		for e in edge_attr:
 			all_edge_fail_scenarios.loc[all_edge_fail_scenarios['edge_id'] == e[0], 'road_cond'] = e[1]
@@ -201,11 +201,11 @@ def main():
 		all_edge_fail_scenarios['percent_exposure'] = 100.0*all_edge_fail_scenarios['exposure_length']/all_edge_fail_scenarios['road_length']
 		df_path = os.path.join(output_path,'hazard_scenarios','roads_hazard_intersections_{}.csv'.format(province_name))
 		all_edge_fail_scenarios.to_csv(df_path,index = False)
-		
+
 		all_edge_fail_scenarios = all_edge_fail_scenarios.set_index(index_cols)
 		scenarios = list(set(all_edge_fail_scenarios.index.values.tolist()))
 
-		for tr_wt in truck_unit_wt: 
+		for tr_wt in truck_unit_wt:
 			flow_output_excel = os.path.join(output_path,'failure_results','single_edge_failures_totals_{0}_{1}_tons_projections.xlsx'.format(province_name,int(tr_wt)))
 			adapt_output_excel = os.path.join(output_path,'failure_results','single_edge_failures_scenarios_{0}_{1}_tons_adapt_options.xlsx'.format(province_name,int(tr_wt)))
 			excl_wrtr = pd.ExcelWriter(adapt_output_excel)
@@ -221,7 +221,7 @@ def main():
 					# loss_time_series = loss_time_series[['edge_id']+cols]
 					# print (loss_time_series)
 					loss_time_series['{}_total_loss'.format(types[t])] = loss_time_series[loss_cols].sum(axis = 1)
-				
+
 				loss_time_series = loss_time_series[['edge_id','min_econ_loss_{}'.format(base_year),'max_econ_loss_{}'.format(base_year),'min_total_loss','max_total_loss']]
 				loss_time_series = loss_time_series[loss_time_series['max_total_loss'] > 0]
 
@@ -327,7 +327,7 @@ def main():
 										per.append(100.0)
 										risk_wt += duration_max[dur]*pr
 
-				
+
 							max_exposure_len = max(exposure_len)
 							min_exposure_len = min(exposure_len)
 
@@ -352,10 +352,10 @@ def main():
 
 							if max_height > 0:
 								edge_options = net_present_value(adaptation_options,'height_m',[max_height],min_edge_ead,max_edge_ead,edge_options,edge_width = 1.0, edge_length = 1000.0*max_exposure_len)
-				
+
 							if road_cond == 'unpaved':
 								edge_options = net_present_value(adaptation_options,'asset_cond',['unpaved','unpaved-paved'],min_edge_ead,max_edge_ead,edge_options,edge_width = width, edge_length = max_exposure_len)
-							
+
 							if road_cond == 'paved':
 								edge_options = net_present_value(adaptation_options,'asset_cond',['paved'],min_edge_ead,max_edge_ead,edge_options,edge_width = width, edge_length = max_exposure_len)
 

@@ -31,8 +31,8 @@ from geoalchemy2 import Geometry, WKTElement
 
 import numpy as np
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from scripts.utils import load_config
+
+from vtra.utils import load_config
 import scripts.transport_network_creation as tnc
 
 def get_node_edge_path_flows(pd_dataframe,regional_id_list,industry,path_index,path_list,path_key_list,path_dict,val_threshold):
@@ -47,7 +47,7 @@ def get_node_edge_path_flows(pd_dataframe,regional_id_list,industry,path_index,p
 				path_list.append(epath)
 
 				path_index += 1
-			
+
 				path_key = 'path_' + str(path_index)
 				path_key_list.append(path_key)
 				path_dict.update({path_key:{}})
@@ -120,7 +120,7 @@ for com in commodities:
 
 			del od_flows
 
-		print ('Done with',ifile) 
+		print ('Done with',ifile)
 
 pth_tuple_list = []
 for key, values in pth_dict.items():
