@@ -1,7 +1,7 @@
 
 # -*- coding: utf-8 -*-
 """
-Python script to assign commodity flows on the road network in Tanzania
+Python script to assign commodity flows on the road network
 Created on Wed Nov 26 2017
 
 @author: Raghav Pant
