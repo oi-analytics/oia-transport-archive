@@ -33,7 +33,7 @@ import numpy as np
 
 
 from vtra.utils import load_config
-import scripts.transport_network_creation as tnc
+import vtra.transport_network_creation as tnc
 
 def get_node_edge_path_flows(pd_dataframe,regional_id_list,industry,path_index,path_list,path_key_list,path_dict,val_threshold):
 	for index, row in pd_dataframe.iterrows():

@@ -283,240 +283,243 @@ def create_spof_info_list(all_edge_dict,file_name,sheet_name,id_col,edge_central
 
 
 
+def main():
+	'''
+	Give the input fields required for establishing the database connection
+	'''
 
-'''
-Give the input fields required for establishing the database connection
-'''
+	'''
+	Create the database connection
+	'''
 
-'''
-Create the database connection
-'''
+	conf = load_config()
 
-conf = load_config()
-
-try:
-	conn = psycopg2.connect(**conf['database'])
-except:
-	print ("I am unable to connect to the database")
-
-
-curs = conn.cursor()
-
-engine = create_engine('postgresql://{user}:{password}@{host}:{port}/{database}'.format({
-	**conf['database']
-}))
-
-excel_writer = pd.ExcelWriter('vnm_mpof_analysis.xlsx')
+	try:
+		conn = psycopg2.connect(**conf['database'])
+	except:
+		print ("I am unable to connect to the database")
 
 
-mode_edge_tables = ['wateredges','railnetworkedges','road2009edges','multi_modal_edges']
-eid = 'edge_id'
-nfid = 'node_f_id'
-ntid = 'node_t_id'
-spid = 'speed'
-gmid = 'geom'
+	curs = conn.cursor()
 
-all_net_dict = {'edge':[],'from_node':[],'to_node':[],'distance':[],'speed':[],'travel_cost':[]}
+	engine = create_engine('postgresql://{user}:{password}@{host}:{port}/{database}'.format({
+		**conf['database']
+	}))
 
-for m in range(len(mode_edge_tables)):
-	all_net_dict = tnc.create_network_dictionary(all_net_dict,mode_edge_tables[m],eid,nfid,ntid,spid,'geom',cur,conn)
-	print('done with',mode_edge_tables[m])
-
-# od_net = tnc.create_igraph_topology(all_net_dict)
+	excel_writer = pd.ExcelWriter('vnm_mpof_analysis.xlsx')
 
 
-'''
-Path OD flow disruptions
-'''
-df = pd.read_excel("vnm_path_flows.xlsx",sheet_name = 'path_flows')
-pth_key_list = df['path_index'].values.tolist()
+	mode_edge_tables = ['wateredges','railnetworkedges','road2009edges','multi_modal_edges']
+	eid = 'edge_id'
+	nfid = 'node_f_id'
+	ntid = 'node_t_id'
+	spid = 'speed'
+	gmid = 'geom'
 
-npth_list = df['node_path'].values.tolist()
-npth_list = [ast.literal_eval(npaths) for npaths in npth_list]
+	all_net_dict = {'edge':[],'from_node':[],'to_node':[],'distance':[],'speed':[],'travel_cost':[]}
 
-epth_list = df['edge_path'].values.tolist()
-epth_list = [ast.literal_eval(epaths) for epaths in epth_list]
+	for m in range(len(mode_edge_tables)):
+		all_net_dict = tnc.create_network_dictionary(all_net_dict,mode_edge_tables[m],eid,nfid,ntid,spid,'geom',cur,conn)
+		print('done with',mode_edge_tables[m])
 
-pth_com_dict = get_path_commodity_od_flows(df)
-
-
-col_names = ['level13_vt_100_mask_1','level14_vt_100_mask_1','level15_vt_100_mask_1','level16_vt_100_mask_1']
-
-ef_list = []
-for rp in col_names:
-	fl_df = pd.read_excel("vnm_road_rail_flood_list.xlsx",sheet_name = rp)
-	fl_list = list(fl_df.itertuples(index=False))
-	for region,scenario in fl_list:
-		sc = ast.literal_eval(scenario)
-		if sc['flood_edge']:
-			ef_set = sc['flood_edge']
-			ef_dict = igraph_scenario_complete_failure(all_net_dict,ef_set,pth_key_list,npth_list,epth_list,pth_com_dict)
-			if ef_dict:
-				for key,values in ef_dict.items():
-					key_vals = key.split('_')
-					ind = key_vals[0]
-					fr = key_vals[1]
-					tr = key_vals[2]
-					ef_list.append((region,rp,ef_set,ind,fr,tr,values))
-
-		print ('Done with region {0} in coastal flooding {1}'.format(region,rp))
-
-df = pd.DataFrame(ef_list,columns = ['region_flooded','return_period','senario_edges','industry','from_region','to_region','tonnage'])
-df.to_csv('vnm_road_rail_edge_multi_failure.csv',index = False)
+	# od_net = tnc.create_igraph_topology(all_net_dict)
 
 
-# e_list = [x[0] for x in road_link_attr] + rail_link_attr
+	'''
+	Path OD flow disruptions
+	'''
+	df = pd.read_excel("vnm_path_flows.xlsx",sheet_name = 'path_flows')
+	pth_key_list = df['path_index'].values.tolist()
 
-# # print (epth_list)
-# ef_dict = {}
-# ef_dict_big = {}
-# for e in e_list:
-# 	ef_dict,ef_dict_big = network_od_disruption(pth_key_list,epth_list,npth_list,od_net,e,ef_dict,ef_dict_big)
-# 	print ('Done with edge:',e)
+	npth_list = df['node_path'].values.tolist()
+	npth_list = [ast.literal_eval(npaths) for npaths in npth_list]
 
-# fail_tuple_list = []
-# for key, values in ef_dict.items():
-# 	if key.isdigit():
-# 		eid = int(key)
-# 	else:
-# 		eid = key
+	epth_list = df['edge_path'].values.tolist()
+	epth_list = [ast.literal_eval(epaths) for epaths in epth_list]
+
+	pth_com_dict = get_path_commodity_od_flows(df)
 
 
-# 	fail_paths = ef_dict[key]['path_index']
-# 	old_lengths = ef_dict[key]['old_dist']
-# 	new_lengths = ef_dict[key]['new_dist']
-# 	length_changes = ef_dict[key]['incr_fact']
+	col_names = ['level13_vt_100_mask_1','level14_vt_100_mask_1','level15_vt_100_mask_1','level16_vt_100_mask_1']
 
-# 	fail_tuple_list.append((eid,fail_paths,old_lengths,new_lengths,length_changes))
+	ef_list = []
+	for rp in col_names:
+		fl_df = pd.read_excel("vnm_road_rail_flood_list.xlsx",sheet_name = rp)
+		fl_list = list(fl_df.itertuples(index=False))
+		for region,scenario in fl_list:
+			sc = ast.literal_eval(scenario)
+			if sc['flood_edge']:
+				ef_set = sc['flood_edge']
+				ef_dict = igraph_scenario_complete_failure(all_net_dict,ef_set,pth_key_list,npth_list,epth_list,pth_com_dict)
+				if ef_dict:
+					for key,values in ef_dict.items():
+						key_vals = key.split('_')
+						ind = key_vals[0]
+						fr = key_vals[1]
+						tr = key_vals[2]
+						ef_list.append((region,rp,ef_set,ind,fr,tr,values))
 
+			print ('Done with region {0} in coastal flooding {1}'.format(region,rp))
 
-# road_fail_list = [x for x in fail_tuple_list if str(x[0]).isdigit()]
-# rail_fail_list = [x for x in fail_tuple_list if 'rail' in str(x[0])]
-
-# excel_writer = pd.ExcelWriter('tz_spof_analysis_9.xlsx')
-
-# cols = ['link','path_index','old_dist','new_dist','incr_fact']
-# df = pd.DataFrame(road_fail_list, columns = cols)
-# df.to_excel(excel_writer,'road_od_disrupt', index = False)
-# excel_writer.save()
-
-# cols = ['id','path_index','old_dist','new_dist','incr_fact']
-# df = pd.DataFrame(rail_fail_list, columns = cols)
-# df.to_excel(excel_writer,'rail_od_disrupt', index = False)
-# excel_writer.save()
-
-# big_fail_tuple_list = []
-# for key, values in ef_dict_big.items():
-# 	if key.isdigit():
-# 		eid = int(key)
-# 	else:
-# 		eid = key
-
-# 	big_fail_tuple_list.append((eid,values))
-
-# cols = ['edge_id','fail_paths_no']
-# df = pd.DataFrame(big_fail_tuple_list, columns = cols)
-# df.to_excel(excel_writer,'big_disrupt', index = False)
-# excel_writer.save()
-
-'''
-Process results
-'''
-# file_no = [4,5,6,7,8,9]
-# all_edges = []
-# for f in file_no:
-# 	f_name = 'tz_spof_analysis_' + str(f) + '.xlsx'
-# 	df = pd.read_excel(f_name,sheet_name = 'big_disrupt')
-# 	e_list = df['edge_id'].values.tolist()
-# 	pth_nos = df['fail_paths_no'].values.tolist()
-# 	e_info = list(zip(e_list,pth_nos))
-# 	all_edges += e_info
-
-# # print (all_edges)
-# unique_edges = list(set([x[0] for x in all_edges]))
-# e_cntr_dict = {}
-# # print (unique_edges)
-# for u in unique_edges:
-# 	upth_nos = [x[1] for x in all_edges if x[0] == u]
-# 	# print (u,upth_nos)
-# 	e_cntr_dict.update({str(u):upth_nos[0]})
-
-# # print (e_cntr_dict)
-
-# all_e_dict = {}
-# for f in file_no:
-# 	f_name = 'tz_spof_analysis_' + str(f) + '.xlsx'
-# 	all_e_dict = create_spof_info_list(all_e_dict,f_name,'road_od_disrupt','link',e_cntr_dict)
-# 	all_e_dict = create_spof_info_list(all_e_dict,f_name,'rail_od_disrupt','id',e_cntr_dict)
-
-# # print (all_e_dict)
-
-# pth_flow_list = []
-# df = pd.read_excel('tz_path_flows.xlsx',sheet_name = 'path_flows')
-# cols = df.columns.values.tolist()
-# industry_names = cols[3:]
-# # print (industry_names)
-# for idx, r in df.iterrows():
-# 	pth_flow = []
-# 	pth_flow.append(r[0])
-# 	for i in range(3,len(r)):
-# 		pth_flow.append(r[i])
-
-# 	pth_flow_list.append(pth_flow)
-
-# total_pths = len(pth_flow_list)
-
-# all_e_tuple = []
-# for key,values in all_e_dict.items():
-# 	if key.isdigit():
-# 		e_id = int(key)
-# 	else:
-# 		e_id = key
-
-# 	e_cntr = 1.0*all_e_dict[key]['centrality']/total_pths
-# 	pth_idx_list = all_e_dict[key]['path_index']
-# 	o_dst_list = all_e_dict[key]['old_dist']
-# 	n_dst_list = all_e_dict[key]['new_dist']
-# 	incr_dst_list = all_e_dict[key]['incr_fact']
-
-# 	ind_flow_vals = np.array([0]*len(industry_names), dtype = np.float64)
-# 	# print (ind_flow_vals)
-# 	ton_km = 0
-# 	low_day_trpt_loss = 0.0
-# 	high_day_trpt_loss = 0.0
-# 	for p in range(len(pth_idx_list)):
-# 		o_dst = o_dst_list[p]
-# 		n_dst = n_dst_list[p]
-# 		incr_dst = incr_dst_list[p]
-
-# 		pth_flow_vals = [pflow for pflow in pth_flow_list if pflow[0] == pth_idx_list[p]]
-# 		pth_flow_vals = pth_flow_vals[0]
-# 		if incr_dst > 1e5:
-# 			# print (pth_flow_vals)
-# 			ind_flow_vals += np.array(pth_flow_vals[1:])
-# 			ton_km += o_dst*pth_flow_vals[-1]
-# 		else:
-# 			ton_km += (n_dst - o_dst)*pth_flow_vals[-1]
-
-# 	if ton_km > 0:
-# 		low_day_trpt_loss = 0.12*ton_km/365.0
-# 		high_day_trpt_loss = 0.15*ton_km/365.0
+	df = pd.DataFrame(ef_list,columns = ['region_flooded','return_period','senario_edges','industry','from_region','to_region','tonnage'])
+	df.to_csv('vnm_road_rail_edge_multi_failure.csv',index = False)
 
 
-# 	e_tuple = [e_id,e_cntr,ton_km,low_day_trpt_loss,high_day_trpt_loss] + list(ind_flow_vals)
-# 	all_e_tuple.append(e_tuple)
+	# e_list = [x[0] for x in road_link_attr] + rail_link_attr
+
+	# # print (epth_list)
+	# ef_dict = {}
+	# ef_dict_big = {}
+	# for e in e_list:
+	# 	ef_dict,ef_dict_big = network_od_disruption(pth_key_list,epth_list,npth_list,od_net,e,ef_dict,ef_dict_big)
+	# 	print ('Done with edge:',e)
+
+	# fail_tuple_list = []
+	# for key, values in ef_dict.items():
+	# 	if key.isdigit():
+	# 		eid = int(key)
+	# 	else:
+	# 		eid = key
 
 
-# road_list = [e for e in all_e_tuple if str(e[0]).isdigit()]
-# rail_list = [e for e in all_e_tuple if 'rail' in str(e[0])]
+	# 	fail_paths = ef_dict[key]['path_index']
+	# 	old_lengths = ef_dict[key]['old_dist']
+	# 	new_lengths = ef_dict[key]['new_dist']
+	# 	length_changes = ef_dict[key]['incr_fact']
 
-# excel_writer = pd.ExcelWriter('tz_spof_flow_analysis.xlsx')
-
-# df = pd.DataFrame(road_list, columns = ['link','centrality','ton_km_loss','tr_p_incr_low','tr_p_incr_high'] + industry_names)
-# df.to_excel(excel_writer,'road_od_losses',index = False)
-# excel_writer.save()
+	# 	fail_tuple_list.append((eid,fail_paths,old_lengths,new_lengths,length_changes))
 
 
-# df = pd.DataFrame(rail_list, columns = ['id','centrality','ton_km_loss','tr_p_incr_low','tr_p_incr_high'] + industry_names)
-# df.to_excel(excel_writer,'rail_od_losses',index = False)
-# excel_writer.save()
+	# road_fail_list = [x for x in fail_tuple_list if str(x[0]).isdigit()]
+	# rail_fail_list = [x for x in fail_tuple_list if 'rail' in str(x[0])]
+
+	# excel_writer = pd.ExcelWriter('tz_spof_analysis_9.xlsx')
+
+	# cols = ['link','path_index','old_dist','new_dist','incr_fact']
+	# df = pd.DataFrame(road_fail_list, columns = cols)
+	# df.to_excel(excel_writer,'road_od_disrupt', index = False)
+	# excel_writer.save()
+
+	# cols = ['id','path_index','old_dist','new_dist','incr_fact']
+	# df = pd.DataFrame(rail_fail_list, columns = cols)
+	# df.to_excel(excel_writer,'rail_od_disrupt', index = False)
+	# excel_writer.save()
+
+	# big_fail_tuple_list = []
+	# for key, values in ef_dict_big.items():
+	# 	if key.isdigit():
+	# 		eid = int(key)
+	# 	else:
+	# 		eid = key
+
+	# 	big_fail_tuple_list.append((eid,values))
+
+	# cols = ['edge_id','fail_paths_no']
+	# df = pd.DataFrame(big_fail_tuple_list, columns = cols)
+	# df.to_excel(excel_writer,'big_disrupt', index = False)
+	# excel_writer.save()
+
+	'''
+	Process results
+	'''
+	# file_no = [4,5,6,7,8,9]
+	# all_edges = []
+	# for f in file_no:
+	# 	f_name = 'tz_spof_analysis_' + str(f) + '.xlsx'
+	# 	df = pd.read_excel(f_name,sheet_name = 'big_disrupt')
+	# 	e_list = df['edge_id'].values.tolist()
+	# 	pth_nos = df['fail_paths_no'].values.tolist()
+	# 	e_info = list(zip(e_list,pth_nos))
+	# 	all_edges += e_info
+
+	# # print (all_edges)
+	# unique_edges = list(set([x[0] for x in all_edges]))
+	# e_cntr_dict = {}
+	# # print (unique_edges)
+	# for u in unique_edges:
+	# 	upth_nos = [x[1] for x in all_edges if x[0] == u]
+	# 	# print (u,upth_nos)
+	# 	e_cntr_dict.update({str(u):upth_nos[0]})
+
+	# # print (e_cntr_dict)
+
+	# all_e_dict = {}
+	# for f in file_no:
+	# 	f_name = 'tz_spof_analysis_' + str(f) + '.xlsx'
+	# 	all_e_dict = create_spof_info_list(all_e_dict,f_name,'road_od_disrupt','link',e_cntr_dict)
+	# 	all_e_dict = create_spof_info_list(all_e_dict,f_name,'rail_od_disrupt','id',e_cntr_dict)
+
+	# # print (all_e_dict)
+
+	# pth_flow_list = []
+	# df = pd.read_excel('tz_path_flows.xlsx',sheet_name = 'path_flows')
+	# cols = df.columns.values.tolist()
+	# industry_names = cols[3:]
+	# # print (industry_names)
+	# for idx, r in df.iterrows():
+	# 	pth_flow = []
+	# 	pth_flow.append(r[0])
+	# 	for i in range(3,len(r)):
+	# 		pth_flow.append(r[i])
+
+	# 	pth_flow_list.append(pth_flow)
+
+	# total_pths = len(pth_flow_list)
+
+	# all_e_tuple = []
+	# for key,values in all_e_dict.items():
+	# 	if key.isdigit():
+	# 		e_id = int(key)
+	# 	else:
+	# 		e_id = key
+
+	# 	e_cntr = 1.0*all_e_dict[key]['centrality']/total_pths
+	# 	pth_idx_list = all_e_dict[key]['path_index']
+	# 	o_dst_list = all_e_dict[key]['old_dist']
+	# 	n_dst_list = all_e_dict[key]['new_dist']
+	# 	incr_dst_list = all_e_dict[key]['incr_fact']
+
+	# 	ind_flow_vals = np.array([0]*len(industry_names), dtype = np.float64)
+	# 	# print (ind_flow_vals)
+	# 	ton_km = 0
+	# 	low_day_trpt_loss = 0.0
+	# 	high_day_trpt_loss = 0.0
+	# 	for p in range(len(pth_idx_list)):
+	# 		o_dst = o_dst_list[p]
+	# 		n_dst = n_dst_list[p]
+	# 		incr_dst = incr_dst_list[p]
+
+	# 		pth_flow_vals = [pflow for pflow in pth_flow_list if pflow[0] == pth_idx_list[p]]
+	# 		pth_flow_vals = pth_flow_vals[0]
+	# 		if incr_dst > 1e5:
+	# 			# print (pth_flow_vals)
+	# 			ind_flow_vals += np.array(pth_flow_vals[1:])
+	# 			ton_km += o_dst*pth_flow_vals[-1]
+	# 		else:
+	# 			ton_km += (n_dst - o_dst)*pth_flow_vals[-1]
+
+	# 	if ton_km > 0:
+	# 		low_day_trpt_loss = 0.12*ton_km/365.0
+	# 		high_day_trpt_loss = 0.15*ton_km/365.0
+
+
+	# 	e_tuple = [e_id,e_cntr,ton_km,low_day_trpt_loss,high_day_trpt_loss] + list(ind_flow_vals)
+	# 	all_e_tuple.append(e_tuple)
+
+
+	# road_list = [e for e in all_e_tuple if str(e[0]).isdigit()]
+	# rail_list = [e for e in all_e_tuple if 'rail' in str(e[0])]
+
+	# excel_writer = pd.ExcelWriter('tz_spof_flow_analysis.xlsx')
+
+	# df = pd.DataFrame(road_list, columns = ['link','centrality','ton_km_loss','tr_p_incr_low','tr_p_incr_high'] + industry_names)
+	# df.to_excel(excel_writer,'road_od_losses',index = False)
+	# excel_writer.save()
+
+
+	# df = pd.DataFrame(rail_list, columns = ['id','centrality','ton_km_loss','tr_p_incr_low','tr_p_incr_high'] + industry_names)
+	# df.to_excel(excel_writer,'rail_od_losses',index = False)
+	# excel_writer.save()
+
+if __name__ == '__main__':
+	main()

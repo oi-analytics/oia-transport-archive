@@ -33,7 +33,7 @@ import numpy as np
 
 from vtra.utils import load_config
 from vtra.dbutils import *
-import scripts.transport_network_creation as tnc
+import vtra.transport_network_creation as tnc
 
 
 '''
