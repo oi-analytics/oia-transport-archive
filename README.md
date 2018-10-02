@@ -62,9 +62,4 @@ Install git hooks to filter notebooks when committing to git:
 
 ## Acknowledgements
 
-This project has been developed by Oxford Infrastructure Analytics as part of a project funded
-by the World Bank.
-
-All code is copyright Oxford Infrastructure Analytics, licensed MIT (see the `LICENSE` file for
-details) and is available on GitHub at
-[oi-analytics/vietnam-transport](https://github.com/oi-analytics/vietnam-transport).
+All code is copyright Oxford Infrastructure Analytics.
